@@ -1,0 +1,13 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="using:AVAGunner.Views"
+        x:Class="AVAGunner.Views.MainWindow"
+        Title="AVA Gunner - Tail Gunner Redux"
+        Width="1024" Height="768"
+        MinWidth="800" MinHeight="600"
+        Background="Black"
+        WindowStartupLocation="CenterScreen">
+
+    <views:GameControl x:Name="GameCanvas" />
+
+</Window>

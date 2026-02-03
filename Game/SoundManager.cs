@@ -1,0 +1,338 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
+using NetCoreAudio;
+
+namespace AVAGunner.Game;
+
+public class SoundManager : IDisposable
+{
+    private string? _laserFile;
+    private string? _explosionFile;
+    private string? _enemyPassFile;
+    private string? _gameOverFile;
+    private string? _warpFile;
+
+    private readonly List<Player> _players = new();
+    private const int MaxPlayers = 8;
+
+    private bool _initialized;
+    private bool _disposed;
+    private string? _tempDir;
+
+    public bool SoundEnabled { get; set; } = true;
+
+    public void Initialize()
+    {
+        if (_initialized) return;
+
+        try
+        {
+            // Create temp directory for sound files
+            _tempDir = Path.Combine(Path.GetTempPath(), "AVAGunner_Sounds");
+            Directory.CreateDirectory(_tempDir);
+
+            // Generate sound files
+            _laserFile = GenerateWavFile("laser", GenerateLaserWaveform());
+            _explosionFile = GenerateWavFile("explosion", GenerateExplosionWaveform());
+            _enemyPassFile = GenerateWavFile("enemypass", GenerateEnemyPassWaveform());
+            _gameOverFile = GenerateWavFile("gameover", GenerateGameOverWaveform());
+            _warpFile = GenerateWavFile("warp", GenerateWarpWaveform());
+
+            // Pre-create players
+            for (var i = 0; i < MaxPlayers; i++)
+            {
+                _players.Add(new Player());
+            }
+
+            _initialized = true;
+        }
+        catch
+        {
+            // Silently ignore audio initialization errors
+        }
+    }
+
+    public void PlayLaser()
+    {
+        PlaySound(_laserFile);
+    }
+
+    public void PlayExplosion()
+    {
+        PlaySound(_explosionFile);
+    }
+
+    public void PlayEnemyPass()
+    {
+        PlaySound(_enemyPassFile);
+    }
+
+    public void PlayGameOver()
+    {
+        PlaySound(_gameOverFile);
+    }
+
+    public void PlayWarp()
+    {
+        PlaySound(_warpFile);
+    }
+
+    private void PlaySound(string? filePath)
+    {
+        if (!_initialized || !SoundEnabled || string.IsNullOrEmpty(filePath)) return;
+
+        try
+        {
+            // Find an available player
+            foreach (var player in _players)
+            {
+                if (!player.Playing)
+                {
+                    _ = player.Play(filePath);
+                    return;
+                }
+            }
+
+            // All players busy, use first one anyway
+            if (_players.Count > 0)
+            {
+                _ = _players[0].Play(filePath);
+            }
+        }
+        catch
+        {
+            // Silently ignore playback errors
+        }
+    }
+
+    private string GenerateWavFile(string name, short[] samples)
+    {
+        var filePath = Path.Combine(_tempDir!, $"{name}.wav");
+        WriteWavFile(filePath, samples, 44100);
+        return filePath;
+    }
+
+    private void WriteWavFile(string filePath, short[] samples, int sampleRate)
+    {
+        using var stream = new FileStream(filePath, FileMode.Create);
+        using var writer = new BinaryWriter(stream);
+
+        var numChannels = (short)1;
+        var bitsPerSample = (short)16;
+        var byteRate = sampleRate * numChannels * bitsPerSample / 8;
+        var blockAlign = (short)(numChannels * bitsPerSample / 8);
+        var dataSize = samples.Length * 2;
+
+        // RIFF header
+        writer.Write("RIFF"u8);
+        writer.Write(36 + dataSize);
+        writer.Write("WAVE"u8);
+
+        // fmt chunk
+        writer.Write("fmt "u8);
+        writer.Write(16); // Chunk size
+        writer.Write((short)1); // Audio format (PCM)
+        writer.Write(numChannels);
+        writer.Write(sampleRate);
+        writer.Write(byteRate);
+        writer.Write(blockAlign);
+        writer.Write(bitsPerSample);
+
+        // data chunk
+        writer.Write("data"u8);
+        writer.Write(dataSize);
+
+        foreach (var sample in samples)
+        {
+            writer.Write(sample);
+        }
+    }
+
+    private short[] GenerateLaserWaveform()
+    {
+        const int sampleRate = 44100;
+        const float duration = 0.1f;
+        var samples = new short[(int)(sampleRate * duration)];
+
+        for (var i = 0; i < samples.Length; i++)
+        {
+            var t = (float)i / sampleRate;
+            var progress = t / duration;
+
+            // Frequency sweep from 1200Hz to 400Hz
+            var freq = 1200f - progress * 800f;
+            var amplitude = (1f - progress) * 0.8f;
+
+            samples[i] = (short)(Math.Sin(2 * Math.PI * freq * t) * amplitude * 32767);
+        }
+
+        return samples;
+    }
+
+    private short[] GenerateExplosionWaveform()
+    {
+        const int sampleRate = 44100;
+        const float duration = 0.5f;
+        var samples = new short[(int)(sampleRate * duration)];
+        var random = new Random(42);
+
+        for (var i = 0; i < samples.Length; i++)
+        {
+            var t = (float)i / sampleRate;
+            var progress = t / duration;
+
+            // Initial punch/attack
+            var attack = progress < 0.05 ? progress / 0.05 : 1.0;
+
+            // Multi-layered explosion
+            var noise = random.NextDouble() * 2 - 1;
+
+            // Deep bass rumble
+            var bassFreq = 40 + progress * 20;
+            var bass = Math.Sin(2 * Math.PI * bassFreq * t) * 0.6;
+
+            // Mid crunch
+            var midFreq = 80 + progress * 40;
+            var mid = Math.Sin(2 * Math.PI * midFreq * t) * 0.4;
+
+            // High crackle (noise modulated)
+            var crackle = noise * Math.Sin(2 * Math.PI * 200 * t) * 0.3;
+
+            // Envelope with sharp attack, slow decay
+            var envelope = attack * Math.Pow(1 - progress, 1.5);
+
+            var sample = (bass + mid + crackle + noise * 0.4) * envelope;
+            samples[i] = (short)(Math.Clamp(sample, -1, 1) * 32767);
+        }
+
+        // Heavier low-pass filter for more boom
+        for (var pass = 0; pass < 2; pass++)
+        {
+            for (var i = 1; i < samples.Length; i++)
+            {
+                samples[i] = (short)(samples[i] * 0.25 + samples[i - 1] * 0.75);
+            }
+        }
+
+        return samples;
+    }
+
+    private short[] GenerateEnemyPassWaveform()
+    {
+        const int sampleRate = 44100;
+        const float duration = 0.25f;
+        var samples = new short[(int)(sampleRate * duration)];
+
+        for (var i = 0; i < samples.Length; i++)
+        {
+            var t = (float)i / sampleRate;
+            var progress = t / duration;
+
+            var freq = progress < 0.5f ? 200f : 150f;
+            var envelope = Math.Sin(progress * Math.PI);
+
+            samples[i] = (short)(Math.Sin(2 * Math.PI * freq * t) * envelope * 0.7 * 32767);
+        }
+
+        return samples;
+    }
+
+    private short[] GenerateGameOverWaveform()
+    {
+        const int sampleRate = 44100;
+        const float duration = 1.0f;
+        var samples = new short[(int)(sampleRate * duration)];
+        var frequencies = new[] { 400f, 350f, 300f, 200f };
+        var noteLength = duration / frequencies.Length;
+
+        for (var i = 0; i < samples.Length; i++)
+        {
+            var t = (float)i / sampleRate;
+            var noteIndex = (int)(t / noteLength);
+            if (noteIndex >= frequencies.Length) noteIndex = frequencies.Length - 1;
+
+            var noteT = (t % noteLength) / noteLength;
+            var freq = frequencies[noteIndex];
+            var envelope = 1f - noteT * 0.5f;
+
+            var wave = Math.Sign(Math.Sin(2 * Math.PI * freq * t));
+            samples[i] = (short)(wave * envelope * 0.5 * 32767);
+        }
+
+        return samples;
+    }
+
+    private short[] GenerateWarpWaveform()
+    {
+        const int sampleRate = 44100;
+        const float duration = 1.2f;
+        var samples = new short[(int)(sampleRate * duration)];
+
+        for (var i = 0; i < samples.Length; i++)
+        {
+            var t = (float)i / sampleRate;
+            var progress = t / duration;
+
+            // Frequency rises then falls (warp in, warp out)
+            float freq;
+            float envelope;
+
+            if (progress < 0.5f)
+            {
+                // Rising phase - accelerating into warp
+                var riseProgress = progress * 2;
+                freq = 100 + riseProgress * riseProgress * 800;
+                envelope = riseProgress;
+            }
+            else
+            {
+                // Falling phase - exiting warp
+                var fallProgress = (progress - 0.5f) * 2;
+                freq = 900 - fallProgress * fallProgress * 700;
+                envelope = 1 - fallProgress * 0.7f;
+            }
+
+            // Main warp tone
+            var warp = Math.Sin(2 * Math.PI * freq * t);
+
+            // Harmonic overtones for richness
+            var harmonic1 = Math.Sin(2 * Math.PI * freq * 1.5 * t) * 0.3;
+            var harmonic2 = Math.Sin(2 * Math.PI * freq * 2 * t) * 0.2;
+
+            // Subtle whoosh noise
+            var noise = (new Random(i).NextDouble() * 2 - 1) * 0.1 * (1 - Math.Abs(progress - 0.5) * 2);
+
+            var sample = (warp + harmonic1 + harmonic2 + noise) * envelope * 0.6;
+            samples[i] = (short)(Math.Clamp(sample, -1, 1) * 32767);
+        }
+
+        return samples;
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+
+        foreach (var player in _players)
+        {
+            try
+            {
+                player.Stop();
+            }
+            catch { }
+        }
+
+        // Clean up temp files
+        if (_tempDir != null && Directory.Exists(_tempDir))
+        {
+            try
+            {
+                Directory.Delete(_tempDir, true);
+            }
+            catch { }
+        }
+    }
+}

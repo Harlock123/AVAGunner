@@ -1,0 +1,359 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Avalonia;
+using Avalonia.Media;
+using AVAGunner.Entities;
+using AVAGunner.Game;
+
+namespace AVAGunner.Rendering;
+
+public class GameRenderer
+{
+    private readonly PerspectiveGrid _grid = new();
+
+    public float FocalLength { get; set; } = 400f;
+
+    public void Update(float deltaTime, bool isPlaying)
+    {
+        if (isPlaying)
+        {
+            _grid.Update(deltaTime);
+        }
+    }
+
+    public void Draw(DrawingContext ctx, double width, double height, GameState state,
+        Reticle reticle, IEnumerable<Enemy> enemies, IEnumerable<Projectile> projectiles,
+        IEnumerable<Explosion> explosions, float warpProgress = 0)
+    {
+        var centerX = (float)(width / 2);
+        var centerY = (float)(height / 2);
+
+        // Draw background grid
+        _grid.Draw(ctx, width, height, state.Phase == GamePhase.Playing || state.Phase == GamePhase.Warping);
+
+        // Draw game elements based on phase
+        switch (state.Phase)
+        {
+            case GamePhase.Title:
+                DrawTitleScreen(ctx, width, height);
+                break;
+
+            case GamePhase.Playing:
+                DrawGameplay(ctx, width, height, centerX, centerY, reticle, enemies, projectiles, explosions);
+                DrawHUD(ctx, width, height, state);
+                break;
+
+            case GamePhase.Paused:
+                DrawGameplay(ctx, width, height, centerX, centerY, reticle, enemies, projectiles, explosions);
+                DrawHUD(ctx, width, height, state);
+                DrawPausedScreen(ctx, width, height);
+                break;
+
+            case GamePhase.Warping:
+                DrawGameplay(ctx, width, height, centerX, centerY, reticle, enemies, projectiles, explosions);
+                DrawWarp(ctx, width, height, warpProgress);
+                DrawWarpHUD(ctx, width, height, state);
+                break;
+
+            case GamePhase.GameOver:
+                DrawGameplay(ctx, width, height, centerX, centerY, reticle, enemies, projectiles, explosions);
+                DrawHUD(ctx, width, height, state);
+                DrawGameOverScreen(ctx, width, height, state);
+                break;
+        }
+    }
+
+    private void DrawTitleScreen(DrawingContext ctx, double width, double height)
+    {
+        var centerX = width / 2;
+        var centerY = height / 2;
+
+        // Title
+        var titleText = "AVA GUNNER";
+        var titleWidth = titleText.Length * 32;
+        VectorGraphics.DrawGlowText(ctx, titleText,
+            new Point(centerX - titleWidth / 2, centerY - 100),
+            VectorGraphics.CyanNeon, 48);
+
+        // Subtitle
+        var subtitle = "TAIL GUNNER REDUX";
+        var subtitleWidth = subtitle.Length * 12;
+        VectorGraphics.DrawGlowText(ctx, subtitle,
+            new Point(centerX - subtitleWidth / 2, centerY - 40),
+            VectorGraphics.MagentaNeon, 20);
+
+        // Instructions
+        var instructions = "PRESS ENTER TO START";
+        var instWidth = instructions.Length * 10;
+        VectorGraphics.DrawGlowText(ctx, instructions,
+            new Point(centerX - instWidth / 2, centerY + 60),
+            VectorGraphics.GreenNeon, 18);
+
+        // Controls info
+        var controls1 = "MOUSE OR ARROW KEYS TO AIM";
+        var controls2 = "CLICK OR SPACE TO FIRE";
+        VectorGraphics.DrawGlowText(ctx, controls1,
+            new Point(centerX - controls1.Length * 6, centerY + 120),
+            Color.FromArgb(180, 255, 255, 255), 14);
+        VectorGraphics.DrawGlowText(ctx, controls2,
+            new Point(centerX - controls2.Length * 6, centerY + 145),
+            Color.FromArgb(180, 255, 255, 255), 14);
+
+        // Draw decorative ship
+        VectorGraphics.DrawFighter(ctx, new Point(centerX, centerY + 220), 30, 0, VectorGraphics.CyanNeon);
+    }
+
+    private void DrawGameplay(DrawingContext ctx, double width, double height, float centerX, float centerY,
+        Reticle reticle, IEnumerable<Enemy> enemies, IEnumerable<Projectile> projectiles,
+        IEnumerable<Explosion> explosions)
+    {
+        // Draw projectiles (behind enemies for depth)
+        foreach (var proj in projectiles.Where(p => p.IsActive))
+        {
+            var screenPos = proj.GetScreenPosition(centerX, centerY, FocalLength);
+            var size = proj.GetScreenSize(FocalLength);
+            VectorGraphics.DrawProjectile(ctx,
+                new Point(screenPos.X, screenPos.Y),
+                Math.Max(2, size),
+                VectorGraphics.YellowNeon);
+        }
+
+        // Draw explosions sorted by Z (far to near)
+        foreach (var explosion in explosions.Where(e => e.IsActive).OrderByDescending(e => e.Position.Z))
+        {
+            DrawExplosion(ctx, explosion, centerX, centerY);
+        }
+
+        // Draw enemies sorted by Z (far to near)
+        foreach (var enemy in enemies.Where(e => e.IsActive).OrderByDescending(e => e.Position.Z))
+        {
+            var screenPos = enemy.GetScreenPosition(centerX, centerY, FocalLength);
+            var size = enemy.GetScreenSize(FocalLength);
+
+            if (size < 2) continue; // Too small to see
+
+            // Fade color based on distance
+            var distanceFade = Math.Clamp(1 - (enemy.Position.Z - 100) / 800, 0.3, 1.0);
+            var enemyColor = Color.FromArgb(
+                (byte)(255 * distanceFade),
+                VectorGraphics.MagentaNeon.R,
+                VectorGraphics.MagentaNeon.G,
+                VectorGraphics.MagentaNeon.B);
+
+            // Use rotation for 3D effect
+            var rotation = enemy.RotationY; // Primary visible rotation
+
+            switch (enemy.Type)
+            {
+                case EnemyType.Fighter:
+                    VectorGraphics.DrawFighter(ctx, new Point(screenPos.X, screenPos.Y), size, rotation, enemyColor);
+                    break;
+                case EnemyType.Bomber:
+                    VectorGraphics.DrawBomber(ctx, new Point(screenPos.X, screenPos.Y), size, rotation, enemyColor);
+                    break;
+                case EnemyType.Interceptor:
+                    VectorGraphics.DrawInterceptor(ctx, new Point(screenPos.X, screenPos.Y), size, rotation, enemyColor);
+                    break;
+            }
+        }
+
+        // Draw reticle
+        VectorGraphics.DrawReticle(ctx,
+            new Point(reticle.ScreenPosition.X, reticle.ScreenPosition.Y),
+            reticle.Size,
+            VectorGraphics.CyanNeon);
+    }
+
+    private void DrawExplosion(DrawingContext ctx, Explosion explosion, float centerX, float centerY)
+    {
+        var progress = explosion.GetProgress();
+
+        // Draw central flash first (background)
+        if (explosion.FlashIntensity > 0.1f)
+        {
+            var flashScale = FocalLength / explosion.Position.Z;
+            var flashX = centerX + explosion.Position.X * flashScale;
+            var flashY = centerY + explosion.Position.Y * flashScale;
+            var flashSize = explosion.InitialSize * flashScale * (1 + (1 - explosion.FlashIntensity) * 2);
+            var flashAlpha = (byte)(255 * explosion.FlashIntensity);
+
+            VectorGraphics.DrawExplosionFlash(ctx, new Point(flashX, flashY), flashSize,
+                Color.FromArgb(flashAlpha, 255, 200, 100));
+        }
+
+        // Draw vector debris
+        foreach (var debris in explosion.Debris)
+        {
+            if (debris.Position.Z <= 0) continue;
+
+            var scale = FocalLength / debris.Position.Z;
+            var screenX = centerX + debris.Position.X * scale;
+            var screenY = centerY + debris.Position.Y * scale;
+            var screenSize = debris.Size * scale;
+
+            if (screenSize < 1) continue;
+
+            var lifeRatio = debris.Life / debris.MaxLife;
+            var alpha = (byte)(255 * lifeRatio);
+
+            // Color based on debris type and life
+            Color color;
+            switch (debris.Type)
+            {
+                case DebrisType.Triangle:
+                    // Hull pieces: magenta fading to dark red
+                    color = Color.FromArgb(alpha,
+                        (byte)(255 * lifeRatio),
+                        (byte)(50 * lifeRatio),
+                        (byte)(200 * lifeRatio));
+                    VectorGraphics.DrawDebrisTriangle(ctx, new Point(screenX, screenY),
+                        screenSize, debris.Rotation, color);
+                    break;
+
+                case DebrisType.Line:
+                    // Struts: cyan fading to blue
+                    color = Color.FromArgb(alpha,
+                        (byte)(100 * lifeRatio),
+                        (byte)(255 * lifeRatio),
+                        (byte)(255));
+                    VectorGraphics.DrawDebrisLine(ctx, new Point(screenX, screenY),
+                        screenSize, debris.Rotation, color);
+                    break;
+
+                case DebrisType.Spark:
+                    // Sparks: yellow/orange fading
+                    color = Color.FromArgb(alpha,
+                        255,
+                        (byte)(200 * lifeRatio),
+                        (byte)(50 * lifeRatio * lifeRatio));
+                    VectorGraphics.DrawSpark(ctx, new Point(screenX, screenY),
+                        screenSize, color);
+                    break;
+            }
+        }
+    }
+
+    public void DrawWarp(DrawingContext ctx, double width, double height, float progress)
+    {
+        VectorGraphics.DrawWarpEffect(ctx, width, height, progress, VectorGraphics.CyanNeon);
+    }
+
+    private void DrawWarpHUD(DrawingContext ctx, double width, double height, GameState state)
+    {
+        var centerX = width / 2;
+        var centerY = height / 2;
+
+        // "WARPING TO WAVE X" text
+        var warpText = $"WARPING TO WAVE {state.Wave}";
+        var textWidth = warpText.Length * 18;
+        VectorGraphics.DrawGlowText(ctx, warpText,
+            new Point(centerX - textWidth / 2, centerY + 80),
+            VectorGraphics.YellowNeon, 28);
+    }
+
+    private void DrawHUD(DrawingContext ctx, double width, double height, GameState state)
+    {
+        var margin = 20.0;
+
+        // Score (top-left)
+        var scoreText = $"SCORE: {state.Score:D6}";
+        VectorGraphics.DrawGlowText(ctx, scoreText,
+            new Point(margin, margin),
+            VectorGraphics.GreenNeon, 20);
+
+        // Wave (below score)
+        var waveText = $"WAVE: {state.Wave}";
+        VectorGraphics.DrawGlowText(ctx, waveText,
+            new Point(margin, margin + 30),
+            VectorGraphics.CyanNeon, 16);
+
+        // Lives (top-right as ship icons)
+        var livesX = width - margin - 30;
+        for (var i = 0; i < state.Lives; i++)
+        {
+            VectorGraphics.DrawShipIcon(ctx,
+                new Point(livesX - i * 35, margin + 15),
+                12,
+                VectorGraphics.GreenNeon);
+        }
+
+        // Warning zone indicator at bottom
+        var dangerPen = new Pen(new SolidColorBrush(Color.FromArgb(40, 255, 64, 64)), 2);
+        var dangerY = height - 50;
+        ctx.DrawLine(dangerPen, new Point(0, dangerY), new Point(width, dangerY));
+    }
+
+    private void DrawPausedScreen(DrawingContext ctx, double width, double height)
+    {
+        var centerX = width / 2;
+        var centerY = height / 2;
+
+        // Semi-transparent overlay
+        ctx.DrawRectangle(
+            new SolidColorBrush(Color.FromArgb(150, 0, 0, 0)),
+            null,
+            new Rect(0, 0, width, height));
+
+        // Paused text
+        var paused = "PAUSED";
+        var pausedWidth = paused.Length * 32;
+        VectorGraphics.DrawGlowText(ctx, paused,
+            new Point(centerX - pausedWidth / 2, centerY - 40),
+            VectorGraphics.YellowNeon, 48);
+
+        // Resume prompt
+        var resume = "PRESS ENTER TO RESUME";
+        var resumeWidth = resume.Length * 9;
+        VectorGraphics.DrawGlowText(ctx, resume,
+            new Point(centerX - resumeWidth / 2, centerY + 30),
+            VectorGraphics.GreenNeon, 16);
+
+        // Exit prompt
+        var exit = "PRESS ESC TWICE TO EXIT";
+        var exitWidth = exit.Length * 8;
+        VectorGraphics.DrawGlowText(ctx, exit,
+            new Point(centerX - exitWidth / 2, centerY + 60),
+            VectorGraphics.CyanNeon, 14);
+    }
+
+    private void DrawGameOverScreen(DrawingContext ctx, double width, double height, GameState state)
+    {
+        var centerX = width / 2;
+        var centerY = height / 2;
+
+        // Semi-transparent overlay
+        ctx.DrawRectangle(
+            new SolidColorBrush(Color.FromArgb(180, 0, 0, 0)),
+            null,
+            new Rect(0, 0, width, height));
+
+        // Game Over text
+        var gameOver = "GAME OVER";
+        var goWidth = gameOver.Length * 28;
+        VectorGraphics.DrawGlowText(ctx, gameOver,
+            new Point(centerX - goWidth / 2, centerY - 60),
+            VectorGraphics.RedNeon, 42);
+
+        // Final score
+        var finalScore = $"FINAL SCORE: {state.Score}";
+        var fsWidth = finalScore.Length * 14;
+        VectorGraphics.DrawGlowText(ctx, finalScore,
+            new Point(centerX - fsWidth / 2, centerY),
+            VectorGraphics.YellowNeon, 24);
+
+        // Wave reached
+        var waveReached = $"WAVE REACHED: {state.Wave}";
+        var wrWidth = waveReached.Length * 10;
+        VectorGraphics.DrawGlowText(ctx, waveReached,
+            new Point(centerX - wrWidth / 2, centerY + 35),
+            VectorGraphics.CyanNeon, 18);
+
+        // Restart prompt
+        var restart = "PRESS ENTER TO PLAY AGAIN";
+        var rWidth = restart.Length * 9;
+        VectorGraphics.DrawGlowText(ctx, restart,
+            new Point(centerX - rWidth / 2, centerY + 90),
+            VectorGraphics.GreenNeon, 16);
+    }
+}

@@ -7,7 +7,9 @@ public enum EnemyType
 {
     Fighter,
     Bomber,
-    Interceptor
+    Interceptor,
+    Scout,
+    Destroyer
 }
 
 public class Enemy : Entity
@@ -84,6 +86,24 @@ public class Enemy : Entity
                 enemy.PointValue = 200;
                 enemy.BaseSize = 15f;
                 enemy.CurveFrequency *= 1.5f; // Interceptors weave more
+                break;
+            case EnemyType.Scout:
+                enemy.ApproachSpeed = 300f * difficultyMultiplier;
+                enemy.PointValue = 75;
+                enemy.BaseSize = 12f;
+                enemy.CurveFrequency *= 2f; // Scouts are very agile
+                enemy.CurveAmplitudeX *= 1.5f;
+                enemy.CurveAmplitudeY *= 1.5f;
+                enemy.RotationSpeedY *= 2f;
+                break;
+            case EnemyType.Destroyer:
+                enemy.ApproachSpeed = 100f * difficultyMultiplier;
+                enemy.PointValue = 300;
+                enemy.BaseSize = 45f;
+                enemy.CurveAmplitudeX *= 0.3f; // Destroyers are slow and steady
+                enemy.CurveAmplitudeY *= 0.3f;
+                enemy.RotationSpeedX *= 0.5f;
+                enemy.RotationSpeedY *= 0.5f;
                 break;
         }
 

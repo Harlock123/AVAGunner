@@ -156,56 +156,297 @@ public static class VectorGraphics
 
     public static void DrawFighter(DrawingContext ctx, Point center, double size, float rotation, Color color)
     {
-        var points = new[]
+        // Main fuselage - sleek arrow shape
+        var fuselage = new[]
         {
             RotatePoint(new Point(center.X, center.Y - size), center, rotation),
-            RotatePoint(new Point(center.X + size * 0.7, center.Y + size * 0.8), center, rotation),
-            RotatePoint(new Point(center.X, center.Y + size * 0.3), center, rotation),
-            RotatePoint(new Point(center.X - size * 0.7, center.Y + size * 0.8), center, rotation)
+            RotatePoint(new Point(center.X + size * 0.15, center.Y - size * 0.5), center, rotation),
+            RotatePoint(new Point(center.X + size * 0.2, center.Y + size * 0.6), center, rotation),
+            RotatePoint(new Point(center.X, center.Y + size * 0.4), center, rotation),
+            RotatePoint(new Point(center.X - size * 0.2, center.Y + size * 0.6), center, rotation),
+            RotatePoint(new Point(center.X - size * 0.15, center.Y - size * 0.5), center, rotation)
         };
-        DrawGlowPolygon(ctx, points, color, 1.5);
+        DrawGlowPolygon(ctx, fuselage, color, 1.5);
 
-        // Engine glow
+        // Left wing
+        var leftWing = new[]
+        {
+            RotatePoint(new Point(center.X - size * 0.15, center.Y - size * 0.2), center, rotation),
+            RotatePoint(new Point(center.X - size * 0.8, center.Y + size * 0.5), center, rotation),
+            RotatePoint(new Point(center.X - size * 0.7, center.Y + size * 0.7), center, rotation),
+            RotatePoint(new Point(center.X - size * 0.2, center.Y + size * 0.3), center, rotation)
+        };
+        DrawGlowPolygon(ctx, leftWing, color, 1.5);
+
+        // Right wing
+        var rightWing = new[]
+        {
+            RotatePoint(new Point(center.X + size * 0.15, center.Y - size * 0.2), center, rotation),
+            RotatePoint(new Point(center.X + size * 0.8, center.Y + size * 0.5), center, rotation),
+            RotatePoint(new Point(center.X + size * 0.7, center.Y + size * 0.7), center, rotation),
+            RotatePoint(new Point(center.X + size * 0.2, center.Y + size * 0.3), center, rotation)
+        };
+        DrawGlowPolygon(ctx, rightWing, color, 1.5);
+
+        // Cockpit window
+        var cockpit = new[]
+        {
+            RotatePoint(new Point(center.X, center.Y - size * 0.6), center, rotation),
+            RotatePoint(new Point(center.X + size * 0.1, center.Y - size * 0.3), center, rotation),
+            RotatePoint(new Point(center.X - size * 0.1, center.Y - size * 0.3), center, rotation)
+        };
+        DrawGlowPolygon(ctx, cockpit, color, 1);
+
+        // Engine exhausts
         DrawGlowLine(ctx,
-            RotatePoint(new Point(center.X - size * 0.2, center.Y + size * 0.5), center, rotation),
-            RotatePoint(new Point(center.X + size * 0.2, center.Y + size * 0.5), center, rotation),
+            RotatePoint(new Point(center.X - size * 0.1, center.Y + size * 0.6), center, rotation),
+            RotatePoint(new Point(center.X - size * 0.1, center.Y + size * 0.9), center, rotation),
+            color, 1);
+        DrawGlowLine(ctx,
+            RotatePoint(new Point(center.X + size * 0.1, center.Y + size * 0.6), center, rotation),
+            RotatePoint(new Point(center.X + size * 0.1, center.Y + size * 0.9), center, rotation),
             color, 1);
     }
 
     public static void DrawBomber(DrawingContext ctx, Point center, double size, float rotation, Color color)
     {
-        // Main body (hexagon-ish)
-        var points = new[]
+        // Main hull - heavy freighter shape
+        var hull = new[]
         {
-            RotatePoint(new Point(center.X, center.Y - size), center, rotation),
-            RotatePoint(new Point(center.X + size * 0.8, center.Y - size * 0.3), center, rotation),
-            RotatePoint(new Point(center.X + size * 0.8, center.Y + size * 0.5), center, rotation),
-            RotatePoint(new Point(center.X, center.Y + size), center, rotation),
-            RotatePoint(new Point(center.X - size * 0.8, center.Y + size * 0.5), center, rotation),
-            RotatePoint(new Point(center.X - size * 0.8, center.Y - size * 0.3), center, rotation)
+            RotatePoint(new Point(center.X, center.Y - size * 0.8), center, rotation),
+            RotatePoint(new Point(center.X + size * 0.4, center.Y - size * 0.6), center, rotation),
+            RotatePoint(new Point(center.X + size * 0.5, center.Y - size * 0.2), center, rotation),
+            RotatePoint(new Point(center.X + size * 0.5, center.Y + size * 0.5), center, rotation),
+            RotatePoint(new Point(center.X + size * 0.3, center.Y + size * 0.8), center, rotation),
+            RotatePoint(new Point(center.X - size * 0.3, center.Y + size * 0.8), center, rotation),
+            RotatePoint(new Point(center.X - size * 0.5, center.Y + size * 0.5), center, rotation),
+            RotatePoint(new Point(center.X - size * 0.5, center.Y - size * 0.2), center, rotation),
+            RotatePoint(new Point(center.X - size * 0.4, center.Y - size * 0.6), center, rotation)
         };
-        DrawGlowPolygon(ctx, points, color, 2);
+        DrawGlowPolygon(ctx, hull, color, 2);
 
-        // Center line
+        // Left engine nacelle
+        var leftEngine = new[]
+        {
+            RotatePoint(new Point(center.X - size * 0.5, center.Y - size * 0.1), center, rotation),
+            RotatePoint(new Point(center.X - size * 0.9, center.Y + size * 0.1), center, rotation),
+            RotatePoint(new Point(center.X - size * 0.9, center.Y + size * 0.6), center, rotation),
+            RotatePoint(new Point(center.X - size * 0.5, center.Y + size * 0.5), center, rotation)
+        };
+        DrawGlowPolygon(ctx, leftEngine, color, 1.5);
+
+        // Right engine nacelle
+        var rightEngine = new[]
+        {
+            RotatePoint(new Point(center.X + size * 0.5, center.Y - size * 0.1), center, rotation),
+            RotatePoint(new Point(center.X + size * 0.9, center.Y + size * 0.1), center, rotation),
+            RotatePoint(new Point(center.X + size * 0.9, center.Y + size * 0.6), center, rotation),
+            RotatePoint(new Point(center.X + size * 0.5, center.Y + size * 0.5), center, rotation)
+        };
+        DrawGlowPolygon(ctx, rightEngine, color, 1.5);
+
+        // Cockpit section
+        var cockpit = new[]
+        {
+            RotatePoint(new Point(center.X - size * 0.2, center.Y - size * 0.6), center, rotation),
+            RotatePoint(new Point(center.X + size * 0.2, center.Y - size * 0.6), center, rotation),
+            RotatePoint(new Point(center.X + size * 0.15, center.Y - size * 0.3), center, rotation),
+            RotatePoint(new Point(center.X - size * 0.15, center.Y - size * 0.3), center, rotation)
+        };
+        DrawGlowPolygon(ctx, cockpit, color, 1);
+
+        // Cargo bay lines
         DrawGlowLine(ctx,
-            RotatePoint(new Point(center.X, center.Y - size * 0.7), center, rotation),
-            RotatePoint(new Point(center.X, center.Y + size * 0.7), center, rotation),
+            RotatePoint(new Point(center.X - size * 0.3, center.Y), center, rotation),
+            RotatePoint(new Point(center.X + size * 0.3, center.Y), center, rotation),
             color, 1);
+        DrawGlowLine(ctx,
+            RotatePoint(new Point(center.X - size * 0.3, center.Y + size * 0.3), center, rotation),
+            RotatePoint(new Point(center.X + size * 0.3, center.Y + size * 0.3), center, rotation),
+            color, 1);
+
+        // Engine exhausts
+        DrawGlowLine(ctx,
+            RotatePoint(new Point(center.X - size * 0.7, center.Y + size * 0.6), center, rotation),
+            RotatePoint(new Point(center.X - size * 0.7, center.Y + size * 1.0), center, rotation),
+            color, 1.5);
+        DrawGlowLine(ctx,
+            RotatePoint(new Point(center.X + size * 0.7, center.Y + size * 0.6), center, rotation),
+            RotatePoint(new Point(center.X + size * 0.7, center.Y + size * 1.0), center, rotation),
+            color, 1.5);
     }
 
     public static void DrawInterceptor(DrawingContext ctx, Point center, double size, float rotation, Color color)
     {
-        // Swept-back wings
-        var points = new[]
+        // Central fuselage - needle shape
+        var fuselage = new[]
         {
-            RotatePoint(new Point(center.X, center.Y - size), center, rotation),
-            RotatePoint(new Point(center.X + size, center.Y + size * 0.5), center, rotation),
-            RotatePoint(new Point(center.X + size * 0.3, center.Y + size * 0.3), center, rotation),
-            RotatePoint(new Point(center.X, center.Y + size), center, rotation),
-            RotatePoint(new Point(center.X - size * 0.3, center.Y + size * 0.3), center, rotation),
-            RotatePoint(new Point(center.X - size, center.Y + size * 0.5), center, rotation)
+            RotatePoint(new Point(center.X, center.Y - size * 1.1), center, rotation),
+            RotatePoint(new Point(center.X + size * 0.12, center.Y - size * 0.4), center, rotation),
+            RotatePoint(new Point(center.X + size * 0.15, center.Y + size * 0.4), center, rotation),
+            RotatePoint(new Point(center.X, center.Y + size * 0.6), center, rotation),
+            RotatePoint(new Point(center.X - size * 0.15, center.Y + size * 0.4), center, rotation),
+            RotatePoint(new Point(center.X - size * 0.12, center.Y - size * 0.4), center, rotation)
         };
-        DrawGlowPolygon(ctx, points, color, 1.5);
+        DrawGlowPolygon(ctx, fuselage, color, 1.5);
+
+        // Left swept wing
+        var leftWing = new[]
+        {
+            RotatePoint(new Point(center.X - size * 0.1, center.Y - size * 0.2), center, rotation),
+            RotatePoint(new Point(center.X - size * 1.0, center.Y + size * 0.4), center, rotation),
+            RotatePoint(new Point(center.X - size * 0.9, center.Y + size * 0.6), center, rotation),
+            RotatePoint(new Point(center.X - size * 0.15, center.Y + size * 0.2), center, rotation)
+        };
+        DrawGlowPolygon(ctx, leftWing, color, 1.5);
+
+        // Right swept wing
+        var rightWing = new[]
+        {
+            RotatePoint(new Point(center.X + size * 0.1, center.Y - size * 0.2), center, rotation),
+            RotatePoint(new Point(center.X + size * 1.0, center.Y + size * 0.4), center, rotation),
+            RotatePoint(new Point(center.X + size * 0.9, center.Y + size * 0.6), center, rotation),
+            RotatePoint(new Point(center.X + size * 0.15, center.Y + size * 0.2), center, rotation)
+        };
+        DrawGlowPolygon(ctx, rightWing, color, 1.5);
+
+        // Wing-mounted weapons/engines
+        DrawGlowLine(ctx,
+            RotatePoint(new Point(center.X - size * 0.6, center.Y + size * 0.3), center, rotation),
+            RotatePoint(new Point(center.X - size * 0.6, center.Y + size * 0.7), center, rotation),
+            color, 1);
+        DrawGlowLine(ctx,
+            RotatePoint(new Point(center.X + size * 0.6, center.Y + size * 0.3), center, rotation),
+            RotatePoint(new Point(center.X + size * 0.6, center.Y + size * 0.7), center, rotation),
+            color, 1);
+
+        // Cockpit canopy
+        var cockpit = new[]
+        {
+            RotatePoint(new Point(center.X, center.Y - size * 0.7), center, rotation),
+            RotatePoint(new Point(center.X + size * 0.08, center.Y - size * 0.3), center, rotation),
+            RotatePoint(new Point(center.X - size * 0.08, center.Y - size * 0.3), center, rotation)
+        };
+        DrawGlowPolygon(ctx, cockpit, color, 1);
+
+        // Tail fins
+        DrawGlowLine(ctx,
+            RotatePoint(new Point(center.X, center.Y + size * 0.3), center, rotation),
+            RotatePoint(new Point(center.X - size * 0.25, center.Y + size * 0.8), center, rotation),
+            color, 1);
+        DrawGlowLine(ctx,
+            RotatePoint(new Point(center.X, center.Y + size * 0.3), center, rotation),
+            RotatePoint(new Point(center.X + size * 0.25, center.Y + size * 0.8), center, rotation),
+            color, 1);
+
+        // Main engine exhaust
+        DrawGlowLine(ctx,
+            RotatePoint(new Point(center.X, center.Y + size * 0.6), center, rotation),
+            RotatePoint(new Point(center.X, center.Y + size * 1.0), center, rotation),
+            color, 1.5);
+    }
+
+    public static void DrawScout(DrawingContext ctx, Point center, double size, float rotation, Color color)
+    {
+        // Compact triangular body
+        var body = new[]
+        {
+            RotatePoint(new Point(center.X, center.Y - size * 0.9), center, rotation),
+            RotatePoint(new Point(center.X + size * 0.5, center.Y + size * 0.5), center, rotation),
+            RotatePoint(new Point(center.X, center.Y + size * 0.2), center, rotation),
+            RotatePoint(new Point(center.X - size * 0.5, center.Y + size * 0.5), center, rotation)
+        };
+        DrawGlowPolygon(ctx, body, color, 1);
+
+        // Small sensor dish on front
+        DrawGlowCircle(ctx,
+            RotatePoint(new Point(center.X, center.Y - size * 0.5), center, rotation),
+            size * 0.15, color, 1);
+
+        // Twin engine pods
+        DrawGlowLine(ctx,
+            RotatePoint(new Point(center.X - size * 0.3, center.Y + size * 0.3), center, rotation),
+            RotatePoint(new Point(center.X - size * 0.3, center.Y + size * 0.7), center, rotation),
+            color, 1);
+        DrawGlowLine(ctx,
+            RotatePoint(new Point(center.X + size * 0.3, center.Y + size * 0.3), center, rotation),
+            RotatePoint(new Point(center.X + size * 0.3, center.Y + size * 0.7), center, rotation),
+            color, 1);
+    }
+
+    public static void DrawDestroyer(DrawingContext ctx, Point center, double size, float rotation, Color color)
+    {
+        // Main hull - massive wedge shape
+        var hull = new[]
+        {
+            RotatePoint(new Point(center.X, center.Y - size * 0.9), center, rotation),
+            RotatePoint(new Point(center.X + size * 0.3, center.Y - size * 0.7), center, rotation),
+            RotatePoint(new Point(center.X + size * 0.5, center.Y - size * 0.3), center, rotation),
+            RotatePoint(new Point(center.X + size * 0.6, center.Y + size * 0.3), center, rotation),
+            RotatePoint(new Point(center.X + size * 0.5, center.Y + size * 0.7), center, rotation),
+            RotatePoint(new Point(center.X + size * 0.2, center.Y + size * 0.9), center, rotation),
+            RotatePoint(new Point(center.X - size * 0.2, center.Y + size * 0.9), center, rotation),
+            RotatePoint(new Point(center.X - size * 0.5, center.Y + size * 0.7), center, rotation),
+            RotatePoint(new Point(center.X - size * 0.6, center.Y + size * 0.3), center, rotation),
+            RotatePoint(new Point(center.X - size * 0.5, center.Y - size * 0.3), center, rotation),
+            RotatePoint(new Point(center.X - size * 0.3, center.Y - size * 0.7), center, rotation)
+        };
+        DrawGlowPolygon(ctx, hull, color, 2.5);
+
+        // Bridge tower
+        var bridge = new[]
+        {
+            RotatePoint(new Point(center.X - size * 0.15, center.Y - size * 0.5), center, rotation),
+            RotatePoint(new Point(center.X + size * 0.15, center.Y - size * 0.5), center, rotation),
+            RotatePoint(new Point(center.X + size * 0.2, center.Y - size * 0.2), center, rotation),
+            RotatePoint(new Point(center.X - size * 0.2, center.Y - size * 0.2), center, rotation)
+        };
+        DrawGlowPolygon(ctx, bridge, color, 1.5);
+
+        // Gun turrets (left and right)
+        DrawGlowCircle(ctx,
+            RotatePoint(new Point(center.X - size * 0.35, center.Y), center, rotation),
+            size * 0.1, color, 1.5);
+        DrawGlowLine(ctx,
+            RotatePoint(new Point(center.X - size * 0.35, center.Y), center, rotation),
+            RotatePoint(new Point(center.X - size * 0.35, center.Y - size * 0.25), center, rotation),
+            color, 1.5);
+
+        DrawGlowCircle(ctx,
+            RotatePoint(new Point(center.X + size * 0.35, center.Y), center, rotation),
+            size * 0.1, color, 1.5);
+        DrawGlowLine(ctx,
+            RotatePoint(new Point(center.X + size * 0.35, center.Y), center, rotation),
+            RotatePoint(new Point(center.X + size * 0.35, center.Y - size * 0.25), center, rotation),
+            color, 1.5);
+
+        // Forward gun turret
+        DrawGlowCircle(ctx,
+            RotatePoint(new Point(center.X, center.Y - size * 0.3), center, rotation),
+            size * 0.08, color, 1);
+        DrawGlowLine(ctx,
+            RotatePoint(new Point(center.X, center.Y - size * 0.3), center, rotation),
+            RotatePoint(new Point(center.X, center.Y - size * 0.55), center, rotation),
+            color, 1);
+
+        // Hull detail lines
+        DrawGlowLine(ctx,
+            RotatePoint(new Point(center.X - size * 0.4, center.Y + size * 0.1), center, rotation),
+            RotatePoint(new Point(center.X + size * 0.4, center.Y + size * 0.1), center, rotation),
+            color, 1);
+        DrawGlowLine(ctx,
+            RotatePoint(new Point(center.X - size * 0.35, center.Y + size * 0.4), center, rotation),
+            RotatePoint(new Point(center.X + size * 0.35, center.Y + size * 0.4), center, rotation),
+            color, 1);
+
+        // Engine array (4 engines)
+        for (var i = -1.5; i <= 1.5; i += 1.0)
+        {
+            DrawGlowLine(ctx,
+                RotatePoint(new Point(center.X + size * 0.12 * i, center.Y + size * 0.9), center, rotation),
+                RotatePoint(new Point(center.X + size * 0.12 * i, center.Y + size * 1.15), center, rotation),
+                color, 1.5);
+        }
     }
 
     public static void DrawProjectile(DrawingContext ctx, Point center, double size, Color color)

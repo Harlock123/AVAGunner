@@ -155,6 +155,12 @@ public class GameRenderer
                 case EnemyType.Interceptor:
                     VectorGraphics.DrawInterceptor(ctx, new Point(screenPos.X, screenPos.Y), size, rotation, enemyColor);
                     break;
+                case EnemyType.Scout:
+                    VectorGraphics.DrawScout(ctx, new Point(screenPos.X, screenPos.Y), size, rotation, enemyColor);
+                    break;
+                case EnemyType.Destroyer:
+                    VectorGraphics.DrawDestroyer(ctx, new Point(screenPos.X, screenPos.Y), size, rotation, enemyColor);
+                    break;
             }
         }
 

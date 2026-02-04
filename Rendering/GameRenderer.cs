@@ -10,16 +10,21 @@ namespace AVAGunner.Rendering;
 
 public class GameRenderer
 {
-    private readonly PerspectiveGrid _grid = new();
+    private readonly Starfield _starfield = new(250);
+
+    // 3D wireframe ship models
+    private static readonly Wireframe3D FighterModel = Wireframe3D.CreateFighter();
+    private static readonly Wireframe3D BomberModel = Wireframe3D.CreateBomber();
+    private static readonly Wireframe3D InterceptorModel = Wireframe3D.CreateInterceptor();
+    private static readonly Wireframe3D ScoutModel = Wireframe3D.CreateScout();
+    private static readonly Wireframe3D DestroyerModel = Wireframe3D.CreateDestroyer();
 
     public float FocalLength { get; set; } = 400f;
 
     public void Update(float deltaTime, bool isPlaying)
     {
-        if (isPlaying)
-        {
-            _grid.Update(deltaTime);
-        }
+        // Always update starfield for continuous motion feel
+        _starfield.Update(deltaTime);
     }
 
     public void Draw(DrawingContext ctx, double width, double height, GameState state,
@@ -29,8 +34,8 @@ public class GameRenderer
         var centerX = (float)(width / 2);
         var centerY = (float)(height / 2);
 
-        // Draw background grid
-        _grid.Draw(ctx, width, height, state.Phase == GamePhase.Playing || state.Phase == GamePhase.Warping);
+        // Draw starfield background
+        _starfield.Draw(ctx, width, height, state.Phase == GamePhase.Playing || state.Phase == GamePhase.Warping);
 
         // Draw game elements based on phase
         switch (state.Phase)
@@ -141,27 +146,25 @@ public class GameRenderer
                 VectorGraphics.MagentaNeon.G,
                 VectorGraphics.MagentaNeon.B);
 
-            // Use rotation for 3D effect
-            var rotation = enemy.RotationY; // Primary visible rotation
-
-            switch (enemy.Type)
+            // Get the appropriate 3D wireframe model
+            var model = enemy.Type switch
             {
-                case EnemyType.Fighter:
-                    VectorGraphics.DrawFighter(ctx, new Point(screenPos.X, screenPos.Y), size, rotation, enemyColor);
-                    break;
-                case EnemyType.Bomber:
-                    VectorGraphics.DrawBomber(ctx, new Point(screenPos.X, screenPos.Y), size, rotation, enemyColor);
-                    break;
-                case EnemyType.Interceptor:
-                    VectorGraphics.DrawInterceptor(ctx, new Point(screenPos.X, screenPos.Y), size, rotation, enemyColor);
-                    break;
-                case EnemyType.Scout:
-                    VectorGraphics.DrawScout(ctx, new Point(screenPos.X, screenPos.Y), size, rotation, enemyColor);
-                    break;
-                case EnemyType.Destroyer:
-                    VectorGraphics.DrawDestroyer(ctx, new Point(screenPos.X, screenPos.Y), size, rotation, enemyColor);
-                    break;
-            }
+                EnemyType.Fighter => FighterModel,
+                EnemyType.Bomber => BomberModel,
+                EnemyType.Interceptor => InterceptorModel,
+                EnemyType.Scout => ScoutModel,
+                EnemyType.Destroyer => DestroyerModel,
+                _ => FighterModel
+            };
+
+            // Draw 3D wireframe with full rotation on all three axes
+            model.Draw(ctx,
+                new Point(screenPos.X, screenPos.Y),
+                size,
+                enemy.RotationX,
+                enemy.RotationY,
+                enemy.RotationZ,
+                enemyColor);
         }
 
         // Draw reticle

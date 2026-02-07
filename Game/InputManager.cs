@@ -13,12 +13,14 @@ public class InputManager
     private bool _startPressed;
     private bool _escapePressed;
     private bool _screenshotPressed;
+    private bool _shieldPressed;
 
     public Point MousePosition => _mousePosition;
     public bool IsFirePressed => _firePressed || _mouseLeftPressed;
     public bool IsStartPressed => _startPressed;
     public bool IsEscapePressed => _escapePressed;
     public bool IsScreenshotPressed => _screenshotPressed;
+    public bool IsShieldPressed => _shieldPressed;
 
     public float ReticleSpeed { get; set; } = 400f;
 
@@ -38,6 +40,9 @@ public class InputManager
         // Support both Ctrl+S and Cmd+S (for Mac)
         if (e.Key == Key.S && ((e.KeyModifiers & KeyModifiers.Control) != 0 || (e.KeyModifiers & KeyModifiers.Meta) != 0))
             _screenshotPressed = true;
+
+        if (e.Key == Key.V)
+            _shieldPressed = true;
     }
 
     public void OnKeyUp(KeyEventArgs e)
@@ -60,6 +65,9 @@ public class InputManager
     {
         if (e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
             _mouseLeftPressed = true;
+
+        if (e.GetCurrentPoint(null).Properties.IsRightButtonPressed)
+            _shieldPressed = true;
     }
 
     public void OnPointerReleased(PointerReleasedEventArgs e)
@@ -103,6 +111,11 @@ public class InputManager
     public void ClearScreenshotState()
     {
         _screenshotPressed = false;
+    }
+
+    public void ClearShieldState()
+    {
+        _shieldPressed = false;
     }
 
     public bool IsUsingMouse()

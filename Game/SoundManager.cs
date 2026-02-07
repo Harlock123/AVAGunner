@@ -13,6 +13,7 @@ public class SoundManager : IDisposable
     private string? _enemyPassFile;
     private string? _gameOverFile;
     private string? _warpFile;
+    private string? _shieldFile;
 
     private readonly List<Player> _players = new();
     private const int MaxPlayers = 8;
@@ -39,6 +40,7 @@ public class SoundManager : IDisposable
             _enemyPassFile = GenerateWavFile("enemypass", GenerateEnemyPassWaveform());
             _gameOverFile = GenerateWavFile("gameover", GenerateGameOverWaveform());
             _warpFile = GenerateWavFile("warp", GenerateWarpWaveform());
+            _shieldFile = GenerateWavFile("shield", GenerateShieldWaveform());
 
             // Pre-create players
             for (var i = 0; i < MaxPlayers; i++)
@@ -77,6 +79,11 @@ public class SoundManager : IDisposable
     public void PlayWarp()
     {
         PlaySound(_warpFile);
+    }
+
+    public void PlayShield()
+    {
+        PlaySound(_shieldFile);
     }
 
     private void PlaySound(string? filePath)
@@ -305,6 +312,53 @@ public class SoundManager : IDisposable
             var noise = (new Random(i).NextDouble() * 2 - 1) * 0.1 * (1 - Math.Abs(progress - 0.5) * 2);
 
             var sample = (warp + harmonic1 + harmonic2 + noise) * envelope * 0.6;
+            samples[i] = (short)(Math.Clamp(sample, -1, 1) * 32767);
+        }
+
+        return samples;
+    }
+
+    private short[] GenerateShieldWaveform()
+    {
+        const int sampleRate = 44100;
+        const float duration = 0.4f;
+        var samples = new short[(int)(sampleRate * duration)];
+        var random = new Random(77);
+
+        for (var i = 0; i < samples.Length; i++)
+        {
+            var t = (float)i / sampleRate;
+            var progress = t / duration;
+
+            // Frequency sweep 200Hz → 800Hz (rising)
+            var freq = 200f + progress * 600f;
+
+            // Main tone
+            var main = Math.Sin(2 * Math.PI * freq * t);
+
+            // Harmonic overtone at 2x frequency for metallic quality
+            var harmonic = Math.Sin(2 * Math.PI * freq * 2 * t) * 0.4;
+
+            // White noise burst at start (0.05s) for "activation" feel
+            var noise = 0.0;
+            if (t < 0.05f)
+            {
+                noise = (random.NextDouble() * 2 - 1) * (1f - t / 0.05f) * 0.6;
+            }
+
+            // Slight resonance via feedback filter approximation
+            var resonance = Math.Sin(2 * Math.PI * freq * 1.5 * t) * 0.15;
+
+            // Amplitude envelope: sharp attack, sustain, medium decay
+            float envelope;
+            if (progress < 0.05f)
+                envelope = progress / 0.05f; // Sharp attack
+            else if (progress < 0.6f)
+                envelope = 1f; // Sustain
+            else
+                envelope = 1f - (progress - 0.6f) / 0.4f; // Medium decay
+
+            var sample = (main + harmonic + noise + resonance) * envelope * 0.5;
             samples[i] = (short)(Math.Clamp(sample, -1, 1) * 32767);
         }
 

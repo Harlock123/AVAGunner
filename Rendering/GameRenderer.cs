@@ -29,7 +29,8 @@ public class GameRenderer
 
     public void Draw(DrawingContext ctx, double width, double height, GameState state,
         Reticle reticle, IEnumerable<Enemy> enemies, IEnumerable<Projectile> projectiles,
-        IEnumerable<Explosion> explosions, float warpProgress = 0)
+        IEnumerable<Explosion> explosions, float warpProgress = 0,
+        bool shieldActive = false, float shieldProgress = 0)
     {
         var centerX = (float)(width / 2);
         var centerY = (float)(height / 2);
@@ -45,7 +46,7 @@ public class GameRenderer
                 break;
 
             case GamePhase.Playing:
-                DrawGameplay(ctx, width, height, centerX, centerY, reticle, enemies, projectiles, explosions);
+                DrawGameplay(ctx, width, height, centerX, centerY, reticle, enemies, projectiles, explosions, shieldActive, shieldProgress);
                 DrawHUD(ctx, width, height, state);
                 break;
 
@@ -98,11 +99,15 @@ public class GameRenderer
         // Controls info
         var controls1 = "MOUSE OR ARROW KEYS TO AIM";
         var controls2 = "CLICK OR SPACE TO FIRE";
+        var controls3 = "V OR RIGHT CLICK FOR SHIELD";
         VectorGraphics.DrawGlowText(ctx, controls1,
             new Point(centerX - controls1.Length * 6, centerY + 120),
             Color.FromArgb(180, 255, 255, 255), 14);
         VectorGraphics.DrawGlowText(ctx, controls2,
             new Point(centerX - controls2.Length * 6, centerY + 145),
+            Color.FromArgb(180, 255, 255, 255), 14);
+        VectorGraphics.DrawGlowText(ctx, controls3,
+            new Point(centerX - controls3.Length * 6, centerY + 170),
             Color.FromArgb(180, 255, 255, 255), 14);
 
         // Draw decorative ship
@@ -111,7 +116,7 @@ public class GameRenderer
 
     private void DrawGameplay(DrawingContext ctx, double width, double height, float centerX, float centerY,
         Reticle reticle, IEnumerable<Enemy> enemies, IEnumerable<Projectile> projectiles,
-        IEnumerable<Explosion> explosions)
+        IEnumerable<Explosion> explosions, bool shieldActive = false, float shieldProgress = 0)
     {
         // Draw projectiles (behind enemies for depth)
         foreach (var proj in projectiles.Where(p => p.IsActive))
@@ -165,6 +170,12 @@ public class GameRenderer
                 enemy.RotationY,
                 enemy.RotationZ,
                 enemyColor);
+        }
+
+        // Draw shield effect overlay
+        if (shieldActive)
+        {
+            VectorGraphics.DrawShieldEffect(ctx, width, height, shieldProgress);
         }
 
         // Draw reticle
@@ -286,6 +297,12 @@ public class GameRenderer
                 12,
                 VectorGraphics.GreenNeon);
         }
+
+        // Shield charges (below lives)
+        var shieldText = "SHIELD: " + new string('I', state.ShieldsRemaining);
+        VectorGraphics.DrawGlowText(ctx, shieldText,
+            new Point(width - margin - shieldText.Length * 10, margin + 40),
+            state.ShieldsRemaining > 0 ? VectorGraphics.CyanNeon : Color.FromArgb(100, 100, 100, 100), 14);
 
         // Warning zone indicator at bottom
         var dangerPen = new Pen(new SolidColorBrush(Color.FromArgb(40, 255, 64, 64)), 2);

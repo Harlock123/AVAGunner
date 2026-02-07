@@ -76,7 +76,7 @@ public class Wireframe3D
             var alpha = (byte)(color.A * Math.Clamp(depthFade, 0.3, 1.0));
             var edgeColor = Color.FromArgb(alpha, color.R, color.G, color.B);
 
-            VectorGraphics.DrawGlowLine(ctx, p1, p2, edgeColor, thickness * baseThickness);
+            VectorGraphics.DrawGlowLine(ctx, p1, p2, edgeColor, thickness * baseThickness, glowLayers: 1, glowSpread: 1.5);
         }
     }
 

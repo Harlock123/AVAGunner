@@ -32,6 +32,12 @@ public class GameEngine : IDisposable
     private float _warpTimer;
     private const float WarpDuration = 1.2f;
 
+    // Shield
+    private bool _shieldActive;
+    private float _shieldTimer;
+    private const float ShieldDuration = 1.0f;
+    private const float ShieldBounceZ = 200f;
+
     private double _screenWidth;
     private double _screenHeight;
 
@@ -183,6 +189,7 @@ public class GameEngine : IDisposable
     private void UpdateWarping(float deltaTime)
     {
         _warpTimer += deltaTime;
+        _shieldActive = false;
 
         // Clear remaining enemies and projectiles during warp
         _enemies.Clear();
@@ -236,6 +243,8 @@ public class GameEngine : IDisposable
         _spawnTimer = 0;
         _spawnInterval = 2.5f; // Slower initial spawn
         _warpTimer = 0;
+        _shieldActive = false;
+        _shieldTimer = 0;
         _reticle.ScreenPosition = new Vector2((float)_screenWidth / 2, (float)_screenHeight / 2);
     }
 
@@ -243,6 +252,7 @@ public class GameEngine : IDisposable
     {
         UpdateReticle(deltaTime);
         UpdateShooting();
+        UpdateShield(deltaTime);
         UpdateEnemies(deltaTime);
         UpdateProjectiles(deltaTime);
         CheckCollisions();
@@ -296,6 +306,47 @@ public class GameEngine : IDisposable
         }
     }
 
+    private void UpdateShield(float deltaTime)
+    {
+        // Decrement timer if shield is active
+        if (_shieldActive)
+        {
+            _shieldTimer -= deltaTime;
+            if (_shieldTimer <= 0)
+            {
+                _shieldActive = false;
+                _shieldTimer = 0;
+            }
+        }
+
+        // Check for shield activation
+        if (_input.IsShieldPressed && _state.ShieldsRemaining > 0 && !_shieldActive)
+        {
+            _shieldActive = true;
+            _shieldTimer = ShieldDuration;
+            _state.UseShield();
+            _sound.PlayShield();
+            _input.ClearShieldState();
+        }
+        else if (_input.IsShieldPressed)
+        {
+            _input.ClearShieldState();
+        }
+
+        // While shield active: bounce nearby enemies
+        if (_shieldActive)
+        {
+            foreach (var enemy in _enemies)
+            {
+                if (enemy.IsActive && enemy.Position.Z < ShieldBounceZ
+                    && enemy.BounceState == EnemyBounceState.Normal)
+                {
+                    enemy.Bounce();
+                }
+            }
+        }
+    }
+
     private void UpdateEnemies(float deltaTime)
     {
         foreach (var enemy in _enemies)
@@ -303,7 +354,9 @@ public class GameEngine : IDisposable
             enemy.Update(deltaTime);
 
             // Check if enemy has passed the ship (only trigger once per enemy)
-            if (enemy.HasPassedShip() && !enemy.HasTriggeredPass && enemy.IsActive)
+            // Skip enemies that are bouncing or recovering - they're being pushed back
+            if (enemy.HasPassedShip() && !enemy.HasTriggeredPass && enemy.IsActive
+                && enemy.BounceState == EnemyBounceState.Normal)
             {
                 enemy.HasTriggeredPass = true;
                 _state.LoseLife();
@@ -392,6 +445,7 @@ public class GameEngine : IDisposable
 
     public void Render(DrawingContext ctx)
     {
-        _renderer.Draw(ctx, _screenWidth, _screenHeight, _state, _reticle, _enemies, _projectiles, _explosions, GetWarpProgress());
+        _renderer.Draw(ctx, _screenWidth, _screenHeight, _state, _reticle, _enemies, _projectiles, _explosions,
+            GetWarpProgress(), _shieldActive, _shieldActive ? 1f - _shieldTimer / ShieldDuration : 0f);
     }
 }

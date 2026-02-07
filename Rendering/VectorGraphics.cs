@@ -13,13 +13,13 @@ public static class VectorGraphics
     public static readonly Color OrangeNeon = Color.FromRgb(255, 128, 0);
     public static readonly Color RedNeon = Color.FromRgb(255, 64, 64);
 
-    public static void DrawGlowLine(DrawingContext ctx, Point start, Point end, Color color, double baseThickness = 2)
+    public static void DrawGlowLine(DrawingContext ctx, Point start, Point end, Color color, double baseThickness = 2, int glowLayers = 3, double glowSpread = 3)
     {
         // Draw glow layers (outer to inner)
-        for (var i = 3; i >= 0; i--)
+        for (var i = glowLayers; i >= 0; i--)
         {
             var alpha = (byte)(80 / (i + 1));
-            var thickness = baseThickness + i * 3;
+            var thickness = baseThickness + i * glowSpread;
             var glowColor = Color.FromArgb(alpha, color.R, color.G, color.B);
             var pen = new Pen(new SolidColorBrush(glowColor), thickness, lineCap: PenLineCap.Round);
             ctx.DrawLine(pen, start, end);
@@ -592,6 +592,68 @@ public static class VectorGraphics
                 ctx.DrawEllipse(new SolidColorBrush(layerColor), null,
                     new Point(centerX, centerY), layerRadius, layerRadius);
             }
+        }
+    }
+
+    public static void DrawShieldEffect(DrawingContext ctx, double width, double height, float progress)
+    {
+        // progress goes from 0 (just activated) to 1 (about to expire)
+        // Flash bright at activation, fade as it expires
+        var intensity = 1f - progress * 0.7f;
+        var alpha = (byte)(200 * intensity);
+        var glowAlpha = (byte)(80 * intensity);
+
+        var color = Color.FromArgb(alpha, 0, 255, 255);
+        var glowColor = Color.FromArgb(glowAlpha, 0, 255, 255);
+
+        var spacing = 45.0;
+        var thickness = 1.5;
+
+        // Slight shimmer animation based on progress
+        var offset = progress * 15.0;
+
+        // Draw +45 degree lines
+        var diagonal = Math.Sqrt(width * width + height * height);
+        var numLines = (int)(diagonal / spacing) + 2;
+
+        var glowPen = new Pen(new SolidColorBrush(glowColor), thickness + 4, lineCap: PenLineCap.Round);
+        var corePen = new Pen(new SolidColorBrush(color), thickness, lineCap: PenLineCap.Round);
+
+        for (var i = -numLines; i <= numLines; i++)
+        {
+            // +45 degree lines (top-left to bottom-right)
+            var d = i * spacing + offset;
+            var x1 = d;
+            var y1 = 0.0;
+            var x2 = d + height;
+            var y2 = height;
+
+            // Clip to screen bounds (approximate)
+            var start45 = new Point(x1, y1);
+            var end45 = new Point(x2, y2);
+
+            ctx.DrawLine(glowPen, start45, end45);
+            ctx.DrawLine(corePen, start45, end45);
+
+            // -45 degree lines (top-right to bottom-left)
+            var x3 = width - d;
+            var y3 = 0.0;
+            var x4 = width - d - height;
+            var y4 = height;
+
+            var startN45 = new Point(x3, y3);
+            var endN45 = new Point(x4, y4);
+
+            ctx.DrawLine(glowPen, startN45, endN45);
+            ctx.DrawLine(corePen, startN45, endN45);
+        }
+
+        // Bright flash overlay at activation (first 20% of duration)
+        if (progress < 0.2f)
+        {
+            var flashAlpha = (byte)(100 * (1f - progress / 0.2f));
+            var flashColor = Color.FromArgb(flashAlpha, 0, 255, 255);
+            ctx.DrawRectangle(new SolidColorBrush(flashColor), null, new Rect(0, 0, width, height));
         }
     }
 

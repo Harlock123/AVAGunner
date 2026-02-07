@@ -18,6 +18,7 @@ public class GameState
     public int EnemiesDestroyedThisWave { get; set; }
     public int EnemiesPerWave => 4 + Wave; // Slower increase: 5, 6, 7, 8...
     public float DifficultyMultiplier => 1f + (Wave - 1) * 0.1f; // Slower difficulty ramp
+    public int ShieldsRemaining { get; set; } = 3;
 
     public void Reset()
     {
@@ -26,12 +27,14 @@ public class GameState
         Lives = 3;
         Wave = 1;
         EnemiesDestroyedThisWave = 0;
+        ShieldsRemaining = 3;
     }
 
     public void NextWave()
     {
         Wave++;
         EnemiesDestroyedThisWave = 0;
+        ShieldsRemaining = 3;
     }
 
     public void LoseLife()
@@ -46,5 +49,12 @@ public class GameState
     public void AddScore(int points)
     {
         Score += points;
+    }
+
+    public bool UseShield()
+    {
+        if (ShieldsRemaining <= 0) return false;
+        ShieldsRemaining--;
+        return true;
     }
 }

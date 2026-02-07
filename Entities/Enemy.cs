@@ -12,6 +12,13 @@ public enum EnemyType
     Destroyer
 }
 
+public enum EnemyBounceState
+{
+    Normal,
+    Bouncing,
+    Recovering
+}
+
 public class Enemy : Entity
 {
     public EnemyType Type { get; set; }
@@ -58,6 +65,17 @@ public class Enemy : Entity
 
     // Track if we've triggered the "passed" event
     public bool HasTriggeredPass { get; set; }
+
+    // Bounce/tumble state machine
+    public EnemyBounceState BounceState { get; private set; } = EnemyBounceState.Normal;
+    private float _bounceTimer;
+    private float _recoverTimer;
+    private float _tumbleSpeedX;
+    private float _tumbleSpeedY;
+    private float _tumbleSpeedZ;
+    private float _bounceSpeed;
+    private const float BounceDuration = 1.5f;
+    private const float RecoverDuration = 0.8f;
 
     private static readonly Random Random = new();
 
@@ -203,8 +221,45 @@ public class Enemy : Entity
         return enemy;
     }
 
+    public void Bounce()
+    {
+        BounceState = EnemyBounceState.Bouncing;
+        _bounceTimer = 0;
+
+        // Reverse flight direction (push back toward spawn area)
+        _flightDirection = new Vector3(
+            _flightDirection.X * 0.3f,
+            _flightDirection.Y * 0.3f,
+            MathF.Abs(_flightDirection.Z) + 0.5f
+        );
+        _flightDirection = Vector3.Normalize(_flightDirection);
+
+        // Bounce speed is ~60% of approach speed
+        _bounceSpeed = ApproachSpeed * 0.6f;
+
+        // Generate random wild tumble rotation speeds (8-15 rad/s on all axes)
+        _tumbleSpeedX = (float)(Random.NextDouble() * 7 + 8) * (Random.Next(2) == 0 ? 1 : -1);
+        _tumbleSpeedY = (float)(Random.NextDouble() * 7 + 8) * (Random.Next(2) == 0 ? 1 : -1);
+        _tumbleSpeedZ = (float)(Random.NextDouble() * 7 + 8) * (Random.Next(2) == 0 ? 1 : -1);
+
+        // Reset pass flag so they can threaten the player again on re-approach
+        HasTriggeredPass = false;
+    }
+
     public override void Update(float deltaTime)
     {
+        if (BounceState == EnemyBounceState.Bouncing)
+        {
+            UpdateBouncing(deltaTime);
+            return;
+        }
+
+        if (BounceState == EnemyBounceState.Recovering)
+        {
+            UpdateRecovering(deltaTime);
+            return;
+        }
+
         // Target position is the player (center of screen at Z=0)
         var targetPos = new Vector3(0, 0, 0);
 
@@ -285,6 +340,59 @@ public class Enemy : Entity
 
         // Move the ship
         Position += Velocity * deltaTime + weaveOffset;
+    }
+
+    private void UpdateBouncing(float deltaTime)
+    {
+        // Move backward (positive Z direction) at bounce speed
+        Position += _flightDirection * _bounceSpeed * deltaTime;
+
+        // Apply wild tumble rotations directly (bypass smooth interpolation)
+        RotationX += _tumbleSpeedX * deltaTime;
+        RotationY += _tumbleSpeedY * deltaTime;
+        RotationZ += _tumbleSpeedZ * deltaTime;
+
+        _bounceTimer += deltaTime;
+        if (_bounceTimer >= BounceDuration)
+        {
+            BounceState = EnemyBounceState.Recovering;
+            _recoverTimer = 0;
+        }
+    }
+
+    private void UpdateRecovering(float deltaTime)
+    {
+        _recoverTimer += deltaTime;
+        var t = Math.Clamp(_recoverTimer / RecoverDuration, 0f, 1f);
+
+        // Gradually reduce tumble rotation speeds toward zero
+        _tumbleSpeedX *= (1f - 3f * deltaTime);
+        _tumbleSpeedY *= (1f - 3f * deltaTime);
+        _tumbleSpeedZ *= (1f - 3f * deltaTime);
+
+        // Apply diminishing tumble
+        RotationX += _tumbleSpeedX * deltaTime;
+        RotationY += _tumbleSpeedY * deltaTime;
+        RotationZ += _tumbleSpeedZ * deltaTime;
+
+        // Gradually re-orient flight direction toward player (0,0,0)
+        var toPlayer = -Position;
+        if (toPlayer.LengthSquared() > 0.01f)
+        {
+            var desiredDir = Vector3.Normalize(toPlayer);
+            _flightDirection = Vector3.Normalize(Vector3.Lerp(_flightDirection, desiredDir, t));
+        }
+
+        // Slow down during recovery
+        var speed = _bounceSpeed * (1f - t) + ApproachSpeed * t;
+        Position += _flightDirection * speed * 0.3f * deltaTime;
+
+        if (_recoverTimer >= RecoverDuration)
+        {
+            BounceState = EnemyBounceState.Normal;
+            // Reset velocity to approach player again
+            Velocity = _flightDirection * ApproachSpeed;
+        }
     }
 
     /// <summary>

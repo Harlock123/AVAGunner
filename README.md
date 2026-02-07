@@ -27,10 +27,12 @@ AVAGunner is a rear-view perspective space shooter featuring wireframe vector gr
 ## Features
 
 - Classic arcade-style gameplay
-- Wireframe vector graphics with modern neon glow effects (cyan, magenta, yellow, green)
+- 3D wireframe vector graphics with neon glow effects (cyan, magenta, yellow, green)
 - 3D perspective rendering with enemies approaching from the distance
-- Multiple enemy types: Fighters, Bombers, and Interceptors
-- Curved enemy trajectories with 3D rotation
+- Animated starfield background
+- Multiple enemy types: Fighters, Bombers, Interceptors, Scouts, and Destroyers
+- Curved enemy trajectories with 3D rotation and realistic flight patterns
+- Defensive shield system (3 charges per wave) that bounces nearby enemies back with tumbling animation
 - Explosion effects when enemies are destroyed
 - Wave-based progression with increasing difficulty
 - Cross-platform support (Windows, macOS, Linux)
@@ -43,12 +45,14 @@ AVAGunner is a rear-view perspective space shooter featuring wireframe vector gr
 - **Arrow Keys** or **WASD**: Move targeting reticle
 - **Space**: Fire
 - **Enter**: Start game / Resume from pause
+- **V**: Activate shield
 - **ESC**: Pause game (press twice while paused to exit)
 - **Ctrl+S** or **Cmd+S**: Save screenshot to Documents folder
 
 ### Mouse
 - **Move**: Aim targeting reticle
 - **Left Click**: Fire
+- **Right Click**: Activate shield
 
 ## Requirements
 

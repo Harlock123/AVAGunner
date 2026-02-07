@@ -59,4 +59,22 @@ public class Projectile : Entity
         var hitRadius = enemy.BaseSize * 0.8f;
         return distance < hitRadius;
     }
+
+    public bool CheckTurretCollision(Vector3 turretWorldPos, float turretHitRadius = 18f)
+    {
+        if (!IsActive)
+            return false;
+
+        // Z proximity check (slightly more generous than enemy's 30)
+        var zDiff = Math.Abs(Position.Z - turretWorldPos.Z);
+        if (zDiff > 40f)
+            return false;
+
+        // XY distance check
+        var dx = Position.X - turretWorldPos.X;
+        var dy = Position.Y - turretWorldPos.Y;
+        var distance = (float)Math.Sqrt(dx * dx + dy * dy);
+
+        return distance < turretHitRadius;
+    }
 }

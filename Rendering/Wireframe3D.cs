@@ -414,4 +414,201 @@ public class Wireframe3D
 
         return new Wireframe3D(vertices, edges);
     }
+
+    public static Wireframe3D CreateCapitolShipHull()
+    {
+        // Large dreadnought hull with pointed bow, wide mid-hull, tapered stern,
+        // sponson wings, sensor mast, and ventral keel detail
+        var vertices = new Vector3[]
+        {
+            // Bow point
+            new(0, -1.0f, 0.1f),           // 0
+            // Forward hull top
+            new(-0.2f, -0.8f, 0.2f),       // 1
+            new(0.2f, -0.8f, 0.2f),        // 2
+            // Forward hull bottom
+            new(-0.2f, -0.8f, -0.1f),      // 3
+            new(0.2f, -0.8f, -0.1f),       // 4
+            // Forward-mid hull top
+            new(-0.4f, -0.4f, 0.2f),       // 5
+            new(0.4f, -0.4f, 0.2f),        // 6
+            // Forward-mid hull bottom
+            new(-0.4f, -0.4f, -0.15f),     // 7
+            new(0.4f, -0.4f, -0.15f),      // 8
+            // Mid hull top (widest)
+            new(-0.6f, 0.0f, 0.2f),        // 9
+            new(0.6f, 0.0f, 0.2f),         // 10
+            // Mid hull bottom
+            new(-0.6f, 0.0f, -0.15f),      // 11
+            new(0.6f, 0.0f, -0.15f),       // 12
+            // Rear-mid hull top
+            new(-0.5f, 0.4f, 0.18f),       // 13
+            new(0.5f, 0.4f, 0.18f),        // 14
+            // Rear-mid hull bottom
+            new(-0.5f, 0.4f, -0.12f),      // 15
+            new(0.5f, 0.4f, -0.12f),       // 16
+            // Stern hull top
+            new(-0.35f, 0.8f, 0.15f),      // 17
+            new(0.35f, 0.8f, 0.15f),       // 18
+            // Stern hull bottom
+            new(-0.35f, 0.8f, -0.1f),      // 19
+            new(0.35f, 0.8f, -0.1f),       // 20
+            // Bridge superstructure
+            new(-0.15f, -0.5f, 0.25f),     // 21
+            new(0.15f, -0.5f, 0.25f),      // 22
+            new(-0.15f, -0.3f, 0.35f),     // 23
+            new(0.15f, -0.3f, 0.35f),      // 24
+            new(0, -0.4f, 0.4f),           // 25 bridge peak
+            // Engine array (5 engines at stern)
+            new(-0.28f, 0.95f, 0.05f),     // 26
+            new(-0.14f, 0.95f, 0.05f),     // 27
+            new(0f, 0.95f, 0.05f),         // 28
+            new(0.14f, 0.95f, 0.05f),      // 29
+            new(0.28f, 0.95f, 0.05f),      // 30
+            // Engine exhaust tips
+            new(-0.28f, 1.15f, 0f),        // 31
+            new(-0.14f, 1.15f, 0f),        // 32
+            new(0f, 1.15f, 0f),            // 33
+            new(0.14f, 1.15f, 0f),         // 34
+            new(0.28f, 1.15f, 0f),         // 35
+            // Port sponson wing
+            new(-0.75f, -0.05f, 0.08f),    // 36 forward root
+            new(-0.88f, 0.15f, 0.02f),     // 37 tip
+            new(-0.7f, 0.35f, 0.05f),      // 38 trailing
+            // Starboard sponson wing
+            new(0.75f, -0.05f, 0.08f),     // 39 forward root
+            new(0.88f, 0.15f, 0.02f),      // 40 tip
+            new(0.7f, 0.35f, 0.05f),       // 41 trailing
+            // Sensor mast
+            new(0, -0.92f, 0.32f),         // 42 mast tip
+            // Ventral keel
+            new(0, 0.0f, -0.22f),          // 43 keel midpoint
+        };
+
+        var edges = new (int, int, float)[]
+        {
+            // Bow
+            (0, 1, 2.0f), (0, 2, 2.0f), (0, 3, 1.5f), (0, 4, 1.5f),
+            (1, 2, 1.5f), (3, 4, 1.5f), (1, 3, 1.5f), (2, 4, 1.5f),
+            // Bow to forward-mid
+            (1, 5, 2.0f), (2, 6, 2.0f), (3, 7, 1.5f), (4, 8, 1.5f),
+            // Forward-mid frame
+            (5, 6, 1.8f), (7, 8, 1.5f), (5, 7, 1.5f), (6, 8, 1.5f),
+            // Forward-mid to mid
+            (5, 9, 2.0f), (6, 10, 2.0f), (7, 11, 1.5f), (8, 12, 1.5f),
+            // Mid frame (widest)
+            (9, 10, 2.0f), (11, 12, 1.5f), (9, 11, 1.5f), (10, 12, 1.5f),
+            // Mid to rear-mid
+            (9, 13, 2.0f), (10, 14, 2.0f), (11, 15, 1.5f), (12, 16, 1.5f),
+            // Rear-mid frame
+            (13, 14, 1.8f), (15, 16, 1.5f), (13, 15, 1.5f), (14, 16, 1.5f),
+            // Rear-mid to stern
+            (13, 17, 1.8f), (14, 18, 1.8f), (15, 19, 1.5f), (16, 20, 1.5f),
+            // Stern frame
+            (17, 18, 1.8f), (19, 20, 1.5f), (17, 19, 1.5f), (18, 20, 1.5f),
+            // Bridge superstructure
+            (21, 22, 1.2f), (23, 24, 1.2f), (21, 23, 1.2f), (22, 24, 1.2f),
+            (23, 25, 1.0f), (24, 25, 1.0f),
+            (5, 21, 1.0f), (6, 22, 1.0f),
+            // Hull ridgelines (top center)
+            (1, 5, 1.0f), (5, 9, 1.0f),
+            // Engines
+            (17, 26, 1.2f), (26, 31, 1.5f),
+            (27, 32, 1.5f),
+            (28, 33, 1.5f),
+            (29, 34, 1.5f),
+            (18, 30, 1.2f), (30, 35, 1.5f),
+            // Port sponson wing
+            (9, 36, 1.5f), (36, 37, 1.5f), (37, 38, 1.3f), (38, 13, 1.2f),
+            // Starboard sponson wing
+            (10, 39, 1.5f), (39, 40, 1.5f), (40, 41, 1.3f), (41, 14, 1.2f),
+            // Sensor mast
+            (0, 42, 1.0f), (1, 42, 0.8f), (2, 42, 0.8f),
+            // Ventral keel
+            (7, 43, 1.0f), (43, 15, 1.0f),
+            // Bottom hull panel lines
+            (3, 7, 1.0f), (4, 8, 1.0f),
+        };
+
+        return new Wireframe3D(vertices, edges);
+    }
+
+    public static Wireframe3D CreateTurret()
+    {
+        // Small turret dome: octagonal base ring, dome spokes to apex, gun barrel
+        var vertices = new Vector3[]
+        {
+            // Octagonal base ring
+            new(0.5f, 0, 0),               // 0
+            new(0.35f, -0.35f, 0),         // 1
+            new(0, -0.5f, 0),              // 2
+            new(-0.35f, -0.35f, 0),        // 3
+            new(-0.5f, 0, 0),              // 4
+            new(-0.35f, 0.35f, 0),         // 5
+            new(0, 0.5f, 0),               // 6
+            new(0.35f, 0.35f, 0),          // 7
+            // Dome apex
+            new(0, 0, 0.5f),               // 8
+            // Gun barrel
+            new(0, -0.5f, 0.15f),          // 9
+            new(0, -1.0f, 0.15f),          // 10
+            // Second barrel
+            new(0, -0.5f, 0.3f),           // 11
+            new(0, -1.0f, 0.3f),           // 12
+        };
+
+        var edges = new (int, int, float)[]
+        {
+            // Base ring
+            (0, 1, 1.0f), (1, 2, 1.0f), (2, 3, 1.0f), (3, 4, 1.0f),
+            (4, 5, 1.0f), (5, 6, 1.0f), (6, 7, 1.0f), (7, 0, 1.0f),
+            // Dome spokes (4 cardinal directions to apex)
+            (0, 8, 0.8f), (2, 8, 0.8f), (4, 8, 0.8f), (6, 8, 0.8f),
+            // Gun barrels extending forward (-Y)
+            (9, 10, 1.2f),
+            (11, 12, 1.2f),
+            // Barrel base connections
+            (2, 9, 0.8f), (8, 11, 0.8f),
+        };
+
+        return new Wireframe3D(vertices, edges);
+    }
+
+    public static Wireframe3D CreateMissile()
+    {
+        // Small torpedo shape: pointed nose, triangular body cross-section, tail fins
+        var vertices = new Vector3[]
+        {
+            // Pointed nose
+            new(0, -1.0f, 0),              // 0
+            // Body cross-section (triangular)
+            new(0, -0.3f, 0.25f),          // 1 top
+            new(-0.2f, -0.3f, -0.15f),     // 2 bottom-left
+            new(0.2f, -0.3f, -0.15f),      // 3 bottom-right
+            // Rear cross-section
+            new(0, 0.4f, 0.25f),           // 4 top
+            new(-0.2f, 0.4f, -0.15f),      // 5 bottom-left
+            new(0.2f, 0.4f, -0.15f),       // 6 bottom-right
+            // Tail fins
+            new(0, 0.7f, 0.4f),            // 7 top fin
+            new(-0.35f, 0.7f, -0.2f),      // 8 left fin
+            new(0.35f, 0.7f, -0.2f),       // 9 right fin
+        };
+
+        var edges = new (int, int, float)[]
+        {
+            // Nose to body
+            (0, 1, 1.2f), (0, 2, 1.2f), (0, 3, 1.2f),
+            // Body cross-section front
+            (1, 2, 1.0f), (2, 3, 1.0f), (3, 1, 1.0f),
+            // Body length
+            (1, 4, 1.0f), (2, 5, 1.0f), (3, 6, 1.0f),
+            // Body cross-section rear
+            (4, 5, 1.0f), (5, 6, 1.0f), (6, 4, 1.0f),
+            // Tail fins
+            (4, 7, 0.8f), (5, 8, 0.8f), (6, 9, 0.8f),
+        };
+
+        return new Wireframe3D(vertices, edges);
+    }
 }

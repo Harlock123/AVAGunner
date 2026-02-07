@@ -18,6 +18,18 @@ public class GameRenderer
     private static readonly Wireframe3D InterceptorModel = Wireframe3D.CreateInterceptor();
     private static readonly Wireframe3D ScoutModel = Wireframe3D.CreateScout();
     private static readonly Wireframe3D DestroyerModel = Wireframe3D.CreateDestroyer();
+    private static readonly Wireframe3D CapitolShipHullModel = Wireframe3D.CreateCapitolShipHull();
+    private static readonly Wireframe3D TurretModel = Wireframe3D.CreateTurret();
+    private static readonly Wireframe3D MissileModel = Wireframe3D.CreateMissile();
+
+    private static readonly Color[] TurretColors =
+    {
+        VectorGraphics.CyanNeon,    // 0 - Cyan
+        VectorGraphics.YellowNeon,  // 1 - Yellow
+        VectorGraphics.GreenNeon,   // 2 - Green
+        VectorGraphics.OrangeNeon,  // 3 - Orange
+        VectorGraphics.RedNeon,     // 4 - Red
+    };
 
     public float FocalLength { get; set; } = 400f;
 
@@ -30,7 +42,8 @@ public class GameRenderer
     public void Draw(DrawingContext ctx, double width, double height, GameState state,
         Reticle reticle, IEnumerable<Enemy> enemies, IEnumerable<Projectile> projectiles,
         IEnumerable<Explosion> explosions, float warpProgress = 0,
-        bool shieldActive = false, float shieldProgress = 0)
+        bool shieldActive = false, float shieldProgress = 0,
+        CapitolShip? capitolShip = null, IEnumerable<CapitolMissile>? capitolMissiles = null)
     {
         var centerX = (float)(width / 2);
         var centerY = (float)(height / 2);
@@ -46,25 +59,25 @@ public class GameRenderer
                 break;
 
             case GamePhase.Playing:
-                DrawGameplay(ctx, width, height, centerX, centerY, reticle, enemies, projectiles, explosions, shieldActive, shieldProgress);
-                DrawHUD(ctx, width, height, state);
+                DrawGameplay(ctx, width, height, centerX, centerY, reticle, enemies, projectiles, explosions, shieldActive, shieldProgress, capitolShip, capitolMissiles);
+                DrawHUD(ctx, width, height, state, capitolShip);
                 break;
 
             case GamePhase.Paused:
-                DrawGameplay(ctx, width, height, centerX, centerY, reticle, enemies, projectiles, explosions);
-                DrawHUD(ctx, width, height, state);
+                DrawGameplay(ctx, width, height, centerX, centerY, reticle, enemies, projectiles, explosions, capitolShip: capitolShip, capitolMissiles: capitolMissiles);
+                DrawHUD(ctx, width, height, state, capitolShip);
                 DrawPausedScreen(ctx, width, height);
                 break;
 
             case GamePhase.Warping:
-                DrawGameplay(ctx, width, height, centerX, centerY, reticle, enemies, projectiles, explosions);
+                DrawGameplay(ctx, width, height, centerX, centerY, reticle, enemies, projectiles, explosions, capitolShip: capitolShip, capitolMissiles: capitolMissiles);
                 DrawWarp(ctx, width, height, warpProgress);
                 DrawWarpHUD(ctx, width, height, state);
                 break;
 
             case GamePhase.GameOver:
-                DrawGameplay(ctx, width, height, centerX, centerY, reticle, enemies, projectiles, explosions);
-                DrawHUD(ctx, width, height, state);
+                DrawGameplay(ctx, width, height, centerX, centerY, reticle, enemies, projectiles, explosions, capitolShip: capitolShip, capitolMissiles: capitolMissiles);
+                DrawHUD(ctx, width, height, state, capitolShip);
                 DrawGameOverScreen(ctx, width, height, state);
                 break;
         }
@@ -116,8 +129,24 @@ public class GameRenderer
 
     private void DrawGameplay(DrawingContext ctx, double width, double height, float centerX, float centerY,
         Reticle reticle, IEnumerable<Enemy> enemies, IEnumerable<Projectile> projectiles,
-        IEnumerable<Explosion> explosions, bool shieldActive = false, float shieldProgress = 0)
+        IEnumerable<Explosion> explosions, bool shieldActive = false, float shieldProgress = 0,
+        CapitolShip? capitolShip = null, IEnumerable<CapitolMissile>? capitolMissiles = null)
     {
+        // Draw capitol ship (far away, behind everything else)
+        if (capitolShip != null)
+        {
+            DrawCapitolShip(ctx, capitolShip, centerX, centerY);
+        }
+
+        // Draw capitol missiles
+        if (capitolMissiles != null)
+        {
+            foreach (var missile in capitolMissiles.Where(m => m.IsActive))
+            {
+                DrawCapitolMissile(ctx, missile, centerX, centerY);
+            }
+        }
+
         // Draw projectiles (behind enemies for depth)
         foreach (var proj in projectiles.Where(p => p.IsActive))
         {
@@ -183,6 +212,99 @@ public class GameRenderer
             new Point(reticle.ScreenPosition.X, reticle.ScreenPosition.Y),
             reticle.Size,
             VectorGraphics.CyanNeon);
+    }
+
+    private void DrawCapitolShip(DrawingContext ctx, CapitolShip ship, float centerX, float centerY)
+    {
+        var screenPos = ship.GetScreenPosition(centerX, centerY, FocalLength);
+        var size = ship.GetScreenSize(FocalLength);
+
+        if (size < 2) return;
+
+        // Hull color: light blue-gray
+        var hullColor = Color.FromArgb(200, 140, 160, 200);
+
+        // Draw the hull wireframe
+        CapitolShipHullModel.Draw(ctx,
+            new Point(screenPos.X, screenPos.Y),
+            size,
+            ship.RotationX,
+            ship.RotationY,
+            ship.RotationZ,
+            hullColor, 1.8f);
+
+        // Draw each turret
+        foreach (var turret in ship.Turrets)
+        {
+            var turretWorldPos = ship.GetTurretWorldPosition(turret);
+
+            // Calculate turret screen position
+            if (turretWorldPos.Z <= 0) continue;
+            var turretScale = FocalLength / turretWorldPos.Z;
+            var turretScreenX = centerX + turretWorldPos.X * turretScale;
+            var turretScreenY = centerY + turretWorldPos.Y * turretScale;
+            var turretSize = 14f * turretScale; // Turret size
+
+            if (turretSize < 1) continue;
+
+            if (turret.IsDestroyed)
+            {
+                // Draw X mark for destroyed turrets (dim orange)
+                var dimOrange = Color.FromArgb(120, 255, 128, 0);
+                var xSize = turretSize * 0.8;
+                var center = new Point(turretScreenX, turretScreenY);
+                VectorGraphics.DrawGlowLine(ctx,
+                    new Point(center.X - xSize, center.Y - xSize),
+                    new Point(center.X + xSize, center.Y + xSize),
+                    dimOrange, 1.5);
+                VectorGraphics.DrawGlowLine(ctx,
+                    new Point(center.X + xSize, center.Y - xSize),
+                    new Point(center.X - xSize, center.Y + xSize),
+                    dimOrange, 1.5);
+            }
+            else
+            {
+                // Draw active turret in its neon color
+                var turretColor = turret.ColorIndex < TurretColors.Length
+                    ? TurretColors[turret.ColorIndex]
+                    : VectorGraphics.CyanNeon;
+
+                TurretModel.Draw(ctx,
+                    new Point(turretScreenX, turretScreenY),
+                    turretSize,
+                    ship.RotationX,
+                    ship.RotationY,
+                    ship.RotationZ,
+                    turretColor);
+            }
+        }
+    }
+
+    private void DrawCapitolMissile(DrawingContext ctx, CapitolMissile missile, float centerX, float centerY)
+    {
+        var screenPos = missile.GetScreenPosition(centerX, centerY, FocalLength);
+        var size = missile.GetScreenSize(FocalLength);
+
+        if (size < 1) return;
+
+        var missileColor = missile.ColorIndex < TurretColors.Length
+            ? TurretColors[missile.ColorIndex]
+            : VectorGraphics.RedNeon;
+
+        // Draw the missile wireframe with spin
+        MissileModel.Draw(ctx,
+            new Point(screenPos.X, screenPos.Y),
+            Math.Max(3, size),
+            missile.SpinAngle,
+            0f,
+            0f,
+            missileColor);
+
+        // Draw trailing glow dot
+        var glowColor = Color.FromArgb(150, missileColor.R, missileColor.G, missileColor.B);
+        var glowSize = Math.Max(2, size * 0.6);
+        ctx.DrawEllipse(new SolidColorBrush(glowColor), null,
+            new Point(screenPos.X, screenPos.Y), glowSize, glowSize);
     }
 
     private void DrawExplosion(DrawingContext ctx, Explosion explosion, float centerX, float centerY)
@@ -272,7 +394,7 @@ public class GameRenderer
             VectorGraphics.YellowNeon, 28);
     }
 
-    private void DrawHUD(DrawingContext ctx, double width, double height, GameState state)
+    private void DrawHUD(DrawingContext ctx, double width, double height, GameState state, CapitolShip? capitolShip = null)
     {
         var margin = 20.0;
 
@@ -303,6 +425,34 @@ public class GameRenderer
         VectorGraphics.DrawGlowText(ctx, shieldText,
             new Point(width - margin - shieldText.Length * 10, margin + 40),
             state.ShieldsRemaining > 0 ? VectorGraphics.CyanNeon : Color.FromArgb(100, 100, 100, 100), 14);
+
+        // Capitol ship turret status
+        if (capitolShip != null)
+        {
+            var activeTurrets = 0;
+            foreach (var t in capitolShip.Turrets)
+                if (!t.IsDestroyed) activeTurrets++;
+
+            var csText = $"CAPITOL SHIP - TURRETS: {activeTurrets}/{capitolShip.Turrets.Count}";
+            var csWidth = csText.Length * 10;
+            VectorGraphics.DrawGlowText(ctx, csText,
+                new Point(width / 2 - csWidth / 2, margin),
+                VectorGraphics.OrangeNeon, 16);
+
+            // Row of colored dots showing turret status
+            var dotStartX = width / 2 - (capitolShip.Turrets.Count * 20) / 2.0;
+            for (var i = 0; i < capitolShip.Turrets.Count; i++)
+            {
+                var turret = capitolShip.Turrets[i];
+                var dotX = dotStartX + i * 20 + 10;
+                var dotY = margin + 25;
+                var dotColor = turret.IsDestroyed
+                    ? Color.FromArgb(100, 100, 100, 100)
+                    : (turret.ColorIndex < TurretColors.Length ? TurretColors[turret.ColorIndex] : VectorGraphics.CyanNeon);
+                ctx.DrawEllipse(new SolidColorBrush(dotColor), null,
+                    new Point(dotX, dotY), 5, 5);
+            }
+        }
 
         // Warning zone indicator at bottom
         var dangerPen = new Pen(new SolidColorBrush(Color.FromArgb(40, 255, 64, 64)), 2);

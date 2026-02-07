@@ -19,6 +19,9 @@ public class GameEngine : IDisposable
     private readonly List<Enemy> _enemies = new();
     private readonly List<Projectile> _projectiles = new();
     private readonly List<Explosion> _explosions = new();
+    private CapitolShip? _capitolShip;
+    private readonly List<CapitolMissile> _capitolMissiles = new();
+    private bool _inCapitolShipEncounter;
     private readonly DispatcherTimer _gameTimer;
     private readonly SoundManager _sound = new();
 
@@ -191,9 +194,12 @@ public class GameEngine : IDisposable
         _warpTimer += deltaTime;
         _shieldActive = false;
 
-        // Clear remaining enemies and projectiles during warp
+        // Clear remaining enemies, projectiles, and capitol ship during warp
         _enemies.Clear();
         _projectiles.Clear();
+        _capitolShip = null;
+        _capitolMissiles.Clear();
+        _inCapitolShipEncounter = false;
 
         if (_warpTimer >= WarpDuration)
         {
@@ -245,6 +251,9 @@ public class GameEngine : IDisposable
         _warpTimer = 0;
         _shieldActive = false;
         _shieldTimer = 0;
+        _capitolShip = null;
+        _capitolMissiles.Clear();
+        _inCapitolShipEncounter = false;
         _reticle.ScreenPosition = new Vector2((float)_screenWidth / 2, (float)_screenHeight / 2);
     }
 
@@ -255,6 +264,8 @@ public class GameEngine : IDisposable
         UpdateShield(deltaTime);
         UpdateEnemies(deltaTime);
         UpdateProjectiles(deltaTime);
+        UpdateCapitolShip(deltaTime);
+        UpdateCapitolMissiles(deltaTime);
         CheckCollisions();
         UpdateSpawning(deltaTime);
 
@@ -333,7 +344,7 @@ public class GameEngine : IDisposable
             _input.ClearShieldState();
         }
 
-        // While shield active: bounce nearby enemies
+        // While shield active: bounce nearby enemies and deflect capitol missiles
         if (_shieldActive)
         {
             foreach (var enemy in _enemies)
@@ -342,6 +353,17 @@ public class GameEngine : IDisposable
                     && enemy.BounceState == EnemyBounceState.Normal)
                 {
                     enemy.Bounce();
+                }
+            }
+
+            foreach (var missile in _capitolMissiles)
+            {
+                if (missile.IsActive && missile.Position.Z < ShieldBounceZ)
+                {
+                    // Deflect missile - create spark explosion
+                    var sparkExplosion = Explosion.Create(missile.Position, 8f);
+                    _explosions.Add(sparkExplosion);
+                    missile.IsActive = false;
                 }
             }
         }
@@ -386,8 +408,60 @@ public class GameEngine : IDisposable
         _projectiles.RemoveAll(p => !p.IsActive);
     }
 
+    private void UpdateCapitolShip(float deltaTime)
+    {
+        if (_capitolShip == null) return;
+
+        _capitolShip.Update(deltaTime);
+
+        // Check turrets ready to fire → create missiles
+        var readyTurrets = _capitolShip.GetReadyToFireTurrets();
+        foreach (var turret in readyTurrets)
+        {
+            var turretWorldPos = _capitolShip.GetTurretWorldPosition(turret);
+            var missile = CapitolMissile.Create(turretWorldPos, turret.ColorIndex, _state.DifficultyMultiplier);
+            _capitolMissiles.Add(missile);
+            _sound.PlayTurretFire();
+        }
+
+        // Remove ship if traversed offscreen
+        if (_capitolShip.ShouldRemove(SpawnSpreadX))
+        {
+            _capitolShip = null;
+            EndCapitolEncounterIfActive();
+        }
+    }
+
+    private void UpdateCapitolMissiles(float deltaTime)
+    {
+        foreach (var missile in _capitolMissiles)
+        {
+            if (!missile.IsActive) continue;
+            missile.Update(deltaTime);
+
+            if (missile.HasReachedPlayer())
+            {
+                missile.IsActive = false;
+                _state.LoseLife();
+
+                if (_state.Phase == GamePhase.GameOver)
+                {
+                    _sound.PlayGameOver();
+                }
+                else
+                {
+                    _sound.PlayEnemyPass();
+                }
+            }
+        }
+
+        _capitolMissiles.RemoveAll(m => !m.IsActive);
+    }
+
     private void CheckCollisions()
     {
+        var capitolEncounterJustStarted = false;
+
         foreach (var projectile in _projectiles.Where(p => p.IsActive))
         {
             foreach (var enemy in _enemies.Where(e => e.IsActive && !e.HasTriggeredPass))
@@ -404,26 +478,116 @@ public class GameEngine : IDisposable
                     _state.EnemiesDestroyedThisWave++;
                     _sound.PlayExplosion();
 
-                    // Check for wave completion - trigger warp transition
-                    if (_state.EnemiesDestroyedThisWave >= _state.EnemiesPerWave)
+                    // Check for wave completion
+                    if (_state.EnemiesDestroyedThisWave >= _state.EnemiesPerWave && !_inCapitolShipEncounter)
                     {
-                        _state.NextWave();
-                        // Slower spawn interval decrease
-                        _spawnInterval = Math.Max(1.5f, _spawnInterval - 0.1f);
-                        // Start warp transition
-                        _state.Phase = GamePhase.Warping;
-                        _warpTimer = 0;
-                        _sound.PlayWarp();
+                        if (IsCapitolWaveBoundary(_state.Wave))
+                        {
+                            // Start capitol ship encounter before warping
+                            _inCapitolShipEncounter = true;
+                            capitolEncounterJustStarted = true;
+                            var encounterNumber = (_state.Wave - 3) / 3 + 1;
+                            _capitolShip = CapitolShip.Spawn(SpawnSpreadX, _state.DifficultyMultiplier, encounterNumber);
+                        }
+                        else
+                        {
+                            _state.NextWave();
+                            _spawnInterval = Math.Max(1.5f, _spawnInterval - 0.1f);
+                            _state.Phase = GamePhase.Warping;
+                            _warpTimer = 0;
+                            _sound.PlayWarp();
+                        }
                     }
 
                     break;
                 }
             }
         }
+
+        // Deferred clearing — safe now that iteration is done
+        if (capitolEncounterJustStarted)
+        {
+            _enemies.Clear();
+            _projectiles.Clear();
+        }
+
+        // Capitol ship turret collisions
+        if (_capitolShip != null)
+        {
+            foreach (var projectile in _projectiles.Where(p => p.IsActive))
+            {
+                foreach (var turret in _capitolShip.Turrets)
+                {
+                    if (turret.IsDestroyed) continue;
+
+                    var turretWorldPos = _capitolShip.GetTurretWorldPosition(turret);
+                    if (projectile.CheckTurretCollision(turretWorldPos))
+                    {
+                        // Destroy turret
+                        turret.IsDestroyed = true;
+                        projectile.IsActive = false;
+                        _state.AddScore(CapitolShip.PointsPerTurret);
+
+                        // Small explosion at turret position
+                        var explosion = Explosion.Create(turretWorldPos, 15f);
+                        _explosions.Add(explosion);
+                        _sound.PlayExplosion();
+
+                        // Check if all turrets destroyed
+                        if (_capitolShip.AllTurretsDestroyed())
+                        {
+                            // Big explosion at ship center
+                            var bigExplosion = Explosion.Create(_capitolShip.Position, _capitolShip.BaseSize);
+                            _explosions.Add(bigExplosion);
+                            _sound.PlayCapitolExplosion();
+
+                            // Reward: gain a life
+                            _state.GainLife();
+
+                            // Deactivate all capitol missiles
+                            foreach (var missile in _capitolMissiles)
+                                missile.IsActive = false;
+                            _capitolMissiles.Clear();
+
+                            _capitolShip = null;
+                            EndCapitolEncounterIfActive();
+                        }
+
+                        break;
+                    }
+                }
+
+                if (_capitolShip == null) break; // Ship was destroyed
+            }
+        }
+    }
+
+    /// <summary>
+    /// Capitol ship appears between waves: after waves 3, 6, 9, 12...
+    /// (i.e. before waves 4, 7, 10, 13...)
+    /// </summary>
+    private static bool IsCapitolWaveBoundary(int completedWave)
+    {
+        return completedWave >= 3 && (completedWave - 3) % 3 == 0;
+    }
+
+    private void EndCapitolEncounterIfActive()
+    {
+        if (!_inCapitolShipEncounter) return;
+        _inCapitolShipEncounter = false;
+        _capitolMissiles.Clear();
+        _state.NextWave();
+        _spawnInterval = Math.Max(1.5f, _spawnInterval - 0.1f);
+        _state.Phase = GamePhase.Warping;
+        _warpTimer = 0;
+        _sound.PlayWarp();
     }
 
     private void UpdateSpawning(float deltaTime)
     {
+        // No regular enemy spawning during capitol ship encounter
+        if (_inCapitolShipEncounter) return;
+
         _spawnTimer += deltaTime;
 
         if (_spawnTimer >= _spawnInterval)
@@ -446,6 +610,7 @@ public class GameEngine : IDisposable
     public void Render(DrawingContext ctx)
     {
         _renderer.Draw(ctx, _screenWidth, _screenHeight, _state, _reticle, _enemies, _projectiles, _explosions,
-            GetWarpProgress(), _shieldActive, _shieldActive ? 1f - _shieldTimer / ShieldDuration : 0f);
+            GetWarpProgress(), _shieldActive, _shieldActive ? 1f - _shieldTimer / ShieldDuration : 0f,
+            _capitolShip, _capitolMissiles);
     }
 }

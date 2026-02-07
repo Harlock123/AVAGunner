@@ -14,6 +14,8 @@ public class SoundManager : IDisposable
     private string? _gameOverFile;
     private string? _warpFile;
     private string? _shieldFile;
+    private string? _turretFireFile;
+    private string? _capitolExplosionFile;
 
     private readonly List<Player> _players = new();
     private const int MaxPlayers = 8;
@@ -41,6 +43,8 @@ public class SoundManager : IDisposable
             _gameOverFile = GenerateWavFile("gameover", GenerateGameOverWaveform());
             _warpFile = GenerateWavFile("warp", GenerateWarpWaveform());
             _shieldFile = GenerateWavFile("shield", GenerateShieldWaveform());
+            _turretFireFile = GenerateWavFile("turretfire", GenerateTurretFireWaveform());
+            _capitolExplosionFile = GenerateWavFile("capitolexplosion", GenerateCapitolExplosionWaveform());
 
             // Pre-create players
             for (var i = 0; i < MaxPlayers; i++)
@@ -84,6 +88,16 @@ public class SoundManager : IDisposable
     public void PlayShield()
     {
         PlaySound(_shieldFile);
+    }
+
+    public void PlayTurretFire()
+    {
+        PlaySound(_turretFireFile);
+    }
+
+    public void PlayCapitolExplosion()
+    {
+        PlaySound(_capitolExplosionFile);
     }
 
     private void PlaySound(string? filePath)
@@ -360,6 +374,92 @@ public class SoundManager : IDisposable
 
             var sample = (main + harmonic + noise + resonance) * envelope * 0.5;
             samples[i] = (short)(Math.Clamp(sample, -1, 1) * 32767);
+        }
+
+        return samples;
+    }
+
+    private short[] GenerateTurretFireWaveform()
+    {
+        // Deep thump: 80Hz→40Hz sweep, 0.2s, low-pass filtered
+        const int sampleRate = 44100;
+        const float duration = 0.2f;
+        var samples = new short[(int)(sampleRate * duration)];
+
+        for (var i = 0; i < samples.Length; i++)
+        {
+            var t = (float)i / sampleRate;
+            var progress = t / duration;
+
+            // Frequency sweep from 80Hz to 40Hz
+            var freq = 80f - progress * 40f;
+            var envelope = (1f - progress) * (1f - progress);
+
+            // Deep bass thump
+            var main = Math.Sin(2 * Math.PI * freq * t);
+            // Sub-harmonic for extra depth
+            var sub = Math.Sin(2 * Math.PI * freq * 0.5 * t) * 0.5;
+
+            var sample = (main + sub) * envelope * 0.7;
+            samples[i] = (short)(Math.Clamp(sample, -1, 1) * 32767);
+        }
+
+        // Low-pass filter for deep sound
+        for (var i = 1; i < samples.Length; i++)
+        {
+            samples[i] = (short)(samples[i] * 0.3 + samples[i - 1] * 0.7);
+        }
+
+        return samples;
+    }
+
+    private short[] GenerateCapitolExplosionWaveform()
+    {
+        // Three-phase: initial noise burst + deep bass rumble (30Hz) + crackle/debris
+        const int sampleRate = 44100;
+        const float duration = 1.5f;
+        var samples = new short[(int)(sampleRate * duration)];
+        var random = new Random(99);
+
+        for (var i = 0; i < samples.Length; i++)
+        {
+            var t = (float)i / sampleRate;
+            var progress = t / duration;
+
+            var noise = random.NextDouble() * 2 - 1;
+
+            // Phase 1: Initial noise burst (0-0.1s)
+            var burst = 0.0;
+            if (t < 0.1f)
+            {
+                burst = noise * (1f - t / 0.1f) * 0.8;
+            }
+
+            // Phase 2: Deep bass rumble (30Hz)
+            var bassFreq = 30 + progress * 15;
+            var bass = Math.Sin(2 * Math.PI * bassFreq * t) * 0.8;
+            var bassEnvelope = Math.Pow(1 - progress, 1.2);
+
+            // Phase 3: Crackle/debris (noise modulated)
+            var crackleFreq = 60 + progress * 30;
+            var crackle = noise * Math.Sin(2 * Math.PI * crackleFreq * t) * 0.4;
+            var crackleEnvelope = progress > 0.3f ? Math.Pow(1 - (progress - 0.3f) / 0.7f, 0.8) : progress / 0.3f;
+
+            // Mid rumble layer
+            var midFreq = 50 + progress * 20;
+            var mid = Math.Sin(2 * Math.PI * midFreq * t) * 0.5;
+
+            var sample = burst + (bass + mid) * bassEnvelope + crackle * crackleEnvelope + noise * 0.2 * bassEnvelope;
+            samples[i] = (short)(Math.Clamp(sample, -1, 1) * 32767);
+        }
+
+        // Heavy 3-pass low-pass filter for deep, heavy sound
+        for (var pass = 0; pass < 3; pass++)
+        {
+            for (var i = 1; i < samples.Length; i++)
+            {
+                samples[i] = (short)(samples[i] * 0.2 + samples[i - 1] * 0.8);
+            }
         }
 
         return samples;

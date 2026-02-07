@@ -46,6 +46,11 @@ public class GameState
         }
     }
 
+    public void GainLife()
+    {
+        Lives++;
+    }
+
     public void AddScore(int points)
     {
         Score += points;

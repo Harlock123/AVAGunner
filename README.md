@@ -35,9 +35,23 @@ AVAGunner is a rear-view perspective space shooter featuring wireframe vector gr
 - Defensive shield system (3 charges per wave) that bounces nearby enemies back with tumbling animation
 - Explosion effects when enemies are destroyed
 - Wave-based progression with increasing difficulty
+- Capitol Ship mini-boss encounters between waves
 - Cross-platform support (Windows, macOS, Linux)
 - Mouse and keyboard input support
 - Synthesized retro sound effects
+
+## Capitol Ship Encounters
+
+After every 3rd wave (following wave 3), a Capitol Ship mini-boss traverses the screen as an inter-wave challenge. The ship is a large dreadnought with sponson wings, a sensor mast, and a bridge superstructure rendered as a detailed 3D wireframe.
+
+- **3 Turrets**: Each ship spawns with 3 randomly selected turrets from 5 possible hull positions, each with a distinct neon color (Cyan, Yellow, Green, Orange, Red)
+- **Turret Missiles**: Turrets fire homing missiles at the player. The fire rate starts slow (1/4 normal speed) and increases with each subsequent encounter
+- **Scoring**: Destroying a turret awards 500 points
+- **Extra Life**: Destroying all 3 turrets awards the player a bonus life
+- **Shield Defense**: The shield deflects incoming capitol missiles on contact
+- **HUD**: A turret status display appears at the top center showing remaining turrets with colored indicators
+- **No Regular Enemies**: Regular enemy spawning is paused during the encounter
+- **Encounter Schedule**: Appears after waves 3, 6, 9, 12, and so on
 
 ## Controls
 

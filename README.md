@@ -68,6 +68,31 @@ After every 3rd wave (following wave 3), a Capitol Ship mini-boss traverses the 
 - **Left Click**: Fire
 - **Right Click**: Activate shield
 
+## Download and run
+
+Ready-to-run builds for Windows, macOS and Linux, on both Intel/AMD and ARM, are on the
+[Releases page](https://github.com/Harlock123/AVAGunner/releases). **Latest build** is rebuilt on
+every push to `main`. Each download is one self-contained executable: no .NET install is
+needed.
+
+```bash
+tar -xzf AVAGunner-linux-arm64.tar.gz      # or linux-x64, linux-arm, osx-arm64, osx-x64
+./AVAGunner
+```
+
+On Windows, unzip `AVAGunner-win-x64.zip` (or `-win-arm64`) and run `AVAGunner.exe`. On macOS, if
+Gatekeeper refuses to open it, run `xattr -d com.apple.quarantine AVAGunner` once.
+
+### Linux: sound and gamepads
+
+- **Sound** needs `aplay`, from the `alsa-utils` package. Without it the game runs but is
+  silent. Minimal installs (Arch, Omarchy, some Raspberry Pi images) don't include it:
+
+  ```bash
+  sudo apt install alsa-utils             # Debian / Ubuntu / Raspberry Pi OS
+  sudo pacman -S --needed alsa-utils      # Arch / Omarchy
+  ```
+
 ## Requirements
 
 - .NET 9.0 SDK or later
